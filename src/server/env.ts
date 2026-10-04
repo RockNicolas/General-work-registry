@@ -5,6 +5,10 @@ const envSchema = z.object({
   DATABASE_URL: z
     .string()
     .regex(/^postgres(ql)?:\/\//, "deve começar com postgres:// ou postgresql://"),
+  BETTER_AUTH_SECRET: z
+    .string()
+    .min(32, "mínimo de 32 caracteres (gere com: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\")"),
+  BETTER_AUTH_URL: z.url().default("http://localhost:3000"),
 });
 
 export type Env = z.infer<typeof envSchema>;

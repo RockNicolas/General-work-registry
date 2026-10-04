@@ -53,10 +53,16 @@ O Next 16 não tem mais `next lint`: o lint é `eslint` direto.
 - Nomes de domínio em português, como no schema (`obra`, `lancamento`, `empresa_id`); infraestrutura em inglês.
 - Componentes de UI: shadcn/ui (`src/components/ui`, gerado pelo CLI; `cn` vem do pacote `cn`, do próprio shadcn).
 
-**Multi-tenant (a partir da Fase 2)**
-- Toda consulta de domínio é filtrada por empresa **no servidor**, via `scopedDb(ctx)`; nunca confiar em `empresa_id` vindo do client. RLS no Postgres como segunda barreira.
-- Autorizar em Server Actions, Route Handlers e queries — não só no `proxy.ts`.
+**Multi-tenant (implementado na Fase 2)**
+- Consulta de domínio **só** por `withScope(ctx, (tx) => ...)` (`src/server/db/scope.ts`): abre transação, faz `SET LOCAL ROLE rgo_app` e injeta o escopo (`app.*`) lido pelas políticas de RLS. Lint proíbe importar `@/server/db/client` em `app/`, `components/` e `features/` (exceto `auth` e `integracoes`).
+- Mesmo com RLS, filtre por empresa/obra na consulta: o RLS é a rede de segurança, não a regra de negócio. Nunca confie em `empresa_id` vindo do client.
+- **Toda tabela de domínio nova**: `empresa_id` (+ `obra_id` quando houver), FK composta `(obra_id, empresa_id)` → `obra(id, empresa_id)`, e uma migration custom chamando `SELECT rgo_enable_rls(tabela, obra|empresa|admin)` (modos em `drizzle/0002_rls_tenant.sql`). Isso também concede DML ao `rgo_app`. Tabelas de auth (`user`, `account`, `session`...) nunca recebem GRANT ao `rgo_app`.
+- **Views materializadas e SQL cru ignoram RLS**: ao agregar (dashboards), filtrar explicitamente por empresa/obra do contexto e ter teste de isolamento.
+- Perfis e permissões: `src/features/auth/policies.ts` (`can`, `canAccessEmpresa`, `canAccessObra`). Contexto do usuário: `requireContext()` / `requireAdmin()` (`features/auth/session.ts`). Sem sessão válida → /login; não-admin em área de admin → 404.
+- O `proxy.ts` só redireciona pelo cookie; **a barreira real é validar a sessão** em cada página, Server Action e Route Handler.
+- Sem cadastro público (`disableSignUp`). Usuários são criados pelo Administrador; o primeiro via `pnpm admin:create`.
 - Credenciais de ERP: AES-256-GCM, nunca no front nem nos logs.
+- Formulários que enviam credenciais usam `method="post"` e ficam desabilitados até a hidratação (`useHydrated`), para nunca vazar senha na URL.
 
 **Validação e erros**
 - Toda entrada externa (formulário, planilha, webhook, ERP) passa por Zod antes de tocar o banco.
@@ -68,7 +74,7 @@ O Next 16 não tem mais `next lint`: o lint é `eslint` direto.
 
 **Testes**
 - Unitários com Vitest (`*.test.ts` ao lado do código). E2E com Playwright em `e2e/`.
-- Testes de isolamento entre empresas rodam contra Postgres real, não mock.
+- Testes de isolamento entre empresas rodam contra Postgres real, não mock (`*.int.test.ts`, projeto `integration` do Vitest; usam ids com prefixo aleatório e limpam só o que criaram).
 
 ## Ambiente (Windows)
 

@@ -8,6 +8,20 @@
       "when": 1791144880316,
       "tag": "0000_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791146448320,
+      "tag": "0001_auth_obra",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791146484152,
+      "tag": "0002_rls_tenant",
+      "breakpoints": true
     }
   ]
 }

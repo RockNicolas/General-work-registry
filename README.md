@@ -24,6 +24,17 @@ pnpm dev                      # http://localhost:3000
 No Neon, copie a connection string com **"Pooled connection" desligado** (host sem `-pooler`).
 O pg-boss e as migrations não funcionam pelo pooler.
 
+### Primeiro acesso: criar o administrador
+
+Não há cadastro público. Crie o primeiro administrador pelo terminal:
+
+```bash
+pnpm admin:create --email voce@empresa.com --nome "Seu Nome" --senha "UmaSenhaForte123"
+```
+
+Depois entre em `http://localhost:3000/login`. Daí em diante o administrador cria empresas e usuários pela interface.
+Perfis: **Administrador** (tudo), **Empresa** (leitura das próprias obras) e **Cliente** (leitura das obras liberadas).
+
 Conferência: abra `http://localhost:3000/api/health` — deve responder `{"status":"ok","db":"up"}`.
 A primeira chamada depois de um tempo parado pode demorar alguns segundos (o Neon acorda).
 
@@ -55,12 +66,15 @@ docker compose --profile app up --build
 | Comando | O que faz |
 |---|---|
 | `pnpm dev` / `build` / `start` | Next.js |
-| `pnpm check` | lint + typecheck + testes unitários |
+| `pnpm check` | lint + typecheck + todos os testes (unitários e de integração) |
 | `pnpm lint` / `typecheck` / `test` | etapas isoladas |
+| `pnpm test:unit` / `test:int` | só unitários (sem banco) / só integração (precisa do banco) |
+| `pnpm admin:create` | cria ou promove um administrador |
 | `pnpm test:e2e` | Playwright (usa o banco do `.env`) |
-| `pnpm db:generate` / `db:migrate` / `db:studio` | Drizzle Kit |
+| `pnpm db:generate` / `db:migrate` / `db:studio` | Drizzle Kit (o `db:migrate` é um executor próprio que mostra o erro real) |
 | `pnpm worker` | worker pg-boss |
 
+Os testes de integração e o e2e usam o banco do `.env` (branch `develop`): rodam as migrations e criam dados de teste com ids próprios.
 Na primeira execução do e2e: `pnpm exec playwright install chromium`.
 
 ## Estrutura
