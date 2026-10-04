@@ -13,6 +13,16 @@ export function formatBRL(centavos: Centavos): string {
   return brl.format(centavos / 100);
 }
 
+const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Sem símbolo, para campos de entrada: 123456 → "1.234,56". */
+export function formatDecimalBR(centavos: Centavos): string {
+  if (!Number.isSafeInteger(centavos)) {
+    throw new RangeError(`Centavos deve ser um inteiro seguro, recebido: ${centavos}`);
+  }
+  return decimal.format(centavos / 100);
+}
+
 const BRL_PATTERN = /^(-?)(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?$/;
 
 /**

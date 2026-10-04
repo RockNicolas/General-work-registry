@@ -73,7 +73,7 @@ test.describe("perfis", () => {
   test("cliente vê só o que foi liberado", async ({ page }) => {
     await entrar(page, E2E.clienteUser.email);
     await expect(page.getByRole("heading", { name: "Olá, Caio" })).toBeVisible();
-    await expect(page.getByText("1 empresa(s) e 0 obra(s) liberada(s)")).toBeVisible();
+    await expect(page.getByText("1 empresa(s) e 1 obra(s) liberada(s)")).toBeVisible();
   });
 
   test("usuário sem vínculo cai na tela de sem acesso", async ({ page }) => {

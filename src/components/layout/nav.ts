@@ -1,4 +1,4 @@
-import { LayoutDashboard, type LucideIcon } from "lucide-react";
+import { Building2, HardHat, History, LayoutDashboard, type LucideIcon, Tags, Users } from "lucide-react";
 import type { AppContext } from "@/features/auth/context";
 import { can, type Resource } from "@/features/auth/policies";
 
@@ -16,7 +16,19 @@ export type NavGroup = { label: string; items: NavItem[] };
 const NAV: NavGroup[] = [
   {
     label: "Painel",
-    items: [{ title: "Visão geral", href: "/dashboard", icon: LayoutDashboard, resource: "dashboard" }],
+    items: [
+      { title: "Visão geral", href: "/dashboard", icon: LayoutDashboard, resource: "dashboard" },
+      { title: "Obras", href: "/obras", icon: HardHat, resource: "obra" },
+    ],
+  },
+  {
+    label: "Administração",
+    items: [
+      { title: "Empresas", href: "/admin/empresas", icon: Building2, resource: "empresa" },
+      { title: "Usuários", href: "/admin/usuarios", icon: Users, resource: "usuario" },
+      { title: "Categorias", href: "/admin/categorias", icon: Tags, resource: "empresa" },
+      { title: "Auditoria", href: "/admin/auditoria", icon: History, resource: "auditoria" },
+    ],
   },
 ];
 

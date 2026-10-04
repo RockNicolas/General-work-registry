@@ -12,15 +12,18 @@ export default defineConfig({
   testDir: "./e2e",
   globalSetup: "./e2e/global-setup.ts",
   fullyParallel: true,
-  timeout: 60_000,
+  // Poucos workers: cada um abre um navegador e o `next dev` já pesa; mais que isso só gera lentidão.
+  workers: process.env.CI ? 2 : 2,
+  timeout: 90_000,
   // O `next dev` compila cada rota na primeira visita; folga para esse custo.
-  expect: { timeout: 15_000 },
+  expect: { timeout: 20_000 },
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: "http://localhost:3000",
-    trace: "on-first-retry",
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {

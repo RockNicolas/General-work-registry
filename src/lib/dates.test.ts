@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDateBR, formatDateTimeBR, parseDateBR } from "./dates";
+import { dataIsoValida, formatCompetenciaBR, formatDateBR, formatDateTimeBR, parseDateBR } from "./dates";
 
 describe("formatDateBR", () => {
   it("converte ISO para dd/mm/aaaa sem deslocar o dia", () => {
@@ -32,5 +32,23 @@ describe("formatDateTimeBR", () => {
   it("exibe o instante em America/Sao_Paulo", () => {
     // 2026-10-04T15:30:00Z = 12:30 em Brasília (UTC-3, sem horário de verão)
     expect(formatDateTimeBR(new Date("2026-10-04T15:30:00Z"))).toBe("04/10/2026 12:30");
+  });
+});
+
+describe("dataIsoValida", () => {
+  it("valida datas reais", () => {
+    expect(dataIsoValida("2026-10-04")).toBe(true);
+    expect(dataIsoValida("2024-02-29")).toBe(true);
+    expect(dataIsoValida("2025-02-29")).toBe(false);
+    expect(dataIsoValida("04/10/2026")).toBe(false);
+    expect(dataIsoValida("")).toBe(false);
+  });
+});
+
+describe("formatCompetenciaBR", () => {
+  it("mostra mês abreviado e ano", () => {
+    expect(formatCompetenciaBR("2026-10-01")).toBe("out/2026");
+    expect(formatCompetenciaBR("2026-01-01")).toBe("jan/2026");
+    expect(formatCompetenciaBR("lixo")).toBeNull();
   });
 });

@@ -64,6 +64,14 @@ O Next 16 não tem mais `next lint`: o lint é `eslint` direto.
 - Credenciais de ERP: AES-256-GCM, nunca no front nem nos logs.
 - Formulários que enviam credenciais usam `method="post"` e ficam desabilitados até a hidratação (`useHydrated`), para nunca vazar senha na URL.
 
+**Padrão de um CRUD (Fase 3)**
+- Pasta `src/features/<modulo>/`: `schema.ts` (Zod, usado no formulário **e** no servidor), `service.ts` (regras + `withScope` + auditoria **na mesma transação**; recebe `ctx`, sem `next/headers`, testável), `actions.ts` (`"use server"`, só `adminAction(schema, input, (ctx, data) => service...)`), `components/` (client: `FormDialog` + React Hook Form).
+- Server Actions **nunca lançam**: devolvem `ActionResult` (`{ok, data}` | `{ok:false, error, fieldErrors}`). Regras de negócio lançam `ActionError` (mensagem pronta); erros do Postgres viram texto via `friendlyDbError`; o resto vira mensagem genérica + log.
+- Toda escrita chama `registrarAuditoria(tx, ctx, ...)` (campos sensíveis são omitidos). Auditoria é append-only.
+- Edição/exclusão de lançamento e orçamento só para `origem = manual`; os de planilha/ERP são mantidos pela importação/sincronização.
+- Listas grandes: paginação no servidor com filtros na URL (GET, validados por Zod, valores inválidos descartados). Listas pequenas: `DataTable` (TanStack Table v8) no navegador.
+- Dados de demonstração: `scripts/seed-data.ts` (puro e determinístico, testado) + `scripts/seed.ts`.
+
 **Validação e erros**
 - Toda entrada externa (formulário, planilha, webhook, ERP) passa por Zod antes de tocar o banco.
 - Variáveis de ambiente só via `getEnv()` (`src/server/env.ts`); novas variáveis entram no schema Zod **e** no `.env.example`.

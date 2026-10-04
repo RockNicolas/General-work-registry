@@ -22,6 +22,20 @@
       "when": 1791146484152,
       "tag": "0002_rls_tenant",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791147684339,
+      "tag": "0003_dominio",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791147688064,
+      "tag": "0004_rls_dominio",
+      "breakpoints": true
     }
   ]
 }

@@ -26,3 +26,12 @@ export async function requireAdmin(): Promise<AppContext> {
   if (!ctx.isAdmin) notFound();
   return ctx;
 }
+
+/**
+ * Para Server Actions: devolve o contexto se o usuário é administrador, senão null.
+ * Actions não redirecionam nem dão 404; respondem com erro tratável pelo formulário.
+ */
+export async function getAdminContextOrNull(): Promise<AppContext | null> {
+  const ctx = await getContextOrNull();
+  return ctx?.isAdmin ? ctx : null;
+}

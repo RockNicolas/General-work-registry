@@ -2,7 +2,16 @@ import { randomUUID } from "node:crypto";
 import { inArray } from "drizzle-orm";
 import { buildContext, type AppContext } from "@/features/auth/context";
 import { getDb } from "@/server/db/client";
-import { member, obra, obraAcesso, organization, user } from "@/server/db/schema";
+import {
+  auditoria,
+  categoria,
+  lancamento,
+  member,
+  obra,
+  obraAcesso,
+  organization,
+  user,
+} from "@/server/db/schema";
 
 /**
  * Dois tenants (A e B) com usuários de cada perfil. Tudo com ids prefixados por uma etiqueta
@@ -68,6 +77,43 @@ export async function createTenantFixture() {
     empresaId: ids.empresaA,
   });
 
+  const cats = await db
+    .insert(categoria)
+    .values([
+      { empresaId: ids.empresaA, nome: "Cimento", grupo: "material" },
+      { empresaId: ids.empresaB, nome: "Cimento", grupo: "material" },
+    ])
+    .returning({ id: categoria.id, empresaId: categoria.empresaId });
+  const categoriaId = {
+    A: cats.find((c) => c.empresaId === ids.empresaA)!.id,
+    B: cats.find((c) => c.empresaId === ids.empresaB)!.id,
+  };
+
+  const lancs = await db
+    .insert(lancamento)
+    .values(
+      (
+        [
+          ["A-1", ids.empresaA, categoriaId.A],
+          ["A-2", ids.empresaA, categoriaId.A],
+          ["B-1", ids.empresaB, categoriaId.B],
+        ] as const
+      ).map(([codigo, empresaId, categoriaId]) => ({
+        empresaId,
+        obraId: obraId[codigo],
+        categoriaId,
+        tipo: "custo" as const,
+        valorCentavos: 100_000,
+        dataCompetencia: "2026-01-10",
+        descricao: `lanc ${codigo}`,
+      })),
+    )
+    .returning({ id: lancamento.id, descricao: lancamento.descricao });
+  const lancamentoId = Object.fromEntries(lancs.map((l) => [l.descricao!.replace("lanc ", ""), l.id])) as Record<
+    "A-1" | "A-2" | "B-1",
+    string
+  >;
+
   const ctxFor = async (userId: string): Promise<AppContext> => {
     const [u] = await db.select().from(user).where(inArray(user.id, [userId]));
     const memberships = await db.select().from(member).where(inArray(member.userId, [userId]));
@@ -91,12 +137,17 @@ export async function createTenantFixture() {
     tag,
     ids,
     obraId,
+    categoriaId,
+    lancamentoId,
     todasObras: Object.values(obraId),
     ctx,
     /** Remove SOMENTE as linhas desta fixture (por id), na ordem que respeita as FKs. */
     async cleanup() {
       const empresas = [ids.empresaA, ids.empresaB];
-      await db.delete(obra).where(inArray(obra.empresaId, empresas)); // cascata em obra_acesso
+      await db.delete(lancamento).where(inArray(lancamento.empresaId, empresas));
+      await db.delete(obra).where(inArray(obra.empresaId, empresas)); // cascata em etapa/orcamento/avanco/obra_acesso
+      await db.delete(categoria).where(inArray(categoria.empresaId, empresas));
+      await db.delete(auditoria).where(inArray(auditoria.empresaId, empresas));
       await db.delete(organization).where(inArray(organization.id, empresas)); // cascata em member
       await db.delete(user).where(inArray(user.id, Object.values(ids)));
     },

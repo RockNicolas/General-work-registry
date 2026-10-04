@@ -35,6 +35,17 @@ pnpm admin:create --email voce@empresa.com --nome "Seu Nome" --senha "UmaSenhaFo
 Depois entre em `http://localhost:3000/login`. Daí em diante o administrador cria empresas e usuários pela interface.
 Perfis: **Administrador** (tudo), **Empresa** (leitura das próprias obras) e **Cliente** (leitura das obras liberadas).
 
+### Dados de demonstração (opcional)
+
+```bash
+pnpm db:seed             # 3 empresas, 8 obras, ~1.400 lançamentos, orçamento e avanço físico
+pnpm db:seed --limpar    # remove os dados de demonstração
+```
+
+Logins (senha de todos: `Demo@12345`): `admin@rgo.demo` (administrador), `aurora@rgo.demo` e
+`horizonte@rgo.demo` (empresa) e `cliente@rgo.demo` (só 3 obras liberadas).
+O seed **recusa rodar em banco que tenha empresas reais** — use só no `develop`.
+
 Conferência: abra `http://localhost:3000/api/health` — deve responder `{"status":"ok","db":"up"}`.
 A primeira chamada depois de um tempo parado pode demorar alguns segundos (o Neon acorda).
 
@@ -70,6 +81,7 @@ docker compose --profile app up --build
 | `pnpm lint` / `typecheck` / `test` | etapas isoladas |
 | `pnpm test:unit` / `test:int` | só unitários (sem banco) / só integração (precisa do banco) |
 | `pnpm admin:create` | cria ou promove um administrador |
+| `pnpm db:seed` | dados de demonstração (`--limpar` remove) |
 | `pnpm test:e2e` | Playwright (usa o banco do `.env`) |
 | `pnpm db:generate` / `db:migrate` / `db:studio` | Drizzle Kit (o `db:migrate` é um executor próprio que mostra o erro real) |
 | `pnpm worker` | worker pg-boss |
@@ -81,7 +93,7 @@ Na primeira execução do e2e: `pnpm exec playwright install chromium`.
 
 ```
 src/app/           rotas (App Router) e route handlers
-src/features/      módulos de negócio (a partir da Fase 2)
+src/features/      módulos de negócio (empresas, obras, usuários, etapas, orçamento, lançamentos, ...)
 src/server/        env, banco (Drizzle), auth e fila — só servidor
 src/components/    ui/ (shadcn) e layout/
 src/lib/           utilitários puros (moeda, datas pt-BR)

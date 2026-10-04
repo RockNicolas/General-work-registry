@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { getDb, type Database } from "./client";
+import { type Database, getDb } from "./client";
 
 /**
  * Escopo de acesso de uma requisição. É traduzido em variáveis de transação (app.*) lidas pelas
@@ -15,6 +15,7 @@ export type TenantScope = {
   obraIds: readonly string[];
 };
 
+export type { Database };
 export type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 function joinIds(ids: readonly string[]): string {

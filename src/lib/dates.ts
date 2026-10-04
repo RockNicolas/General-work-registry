@@ -13,6 +13,12 @@ function isRealDate(year: number, month: number, day: number): boolean {
   );
 }
 
+/** true se for uma data ISO ("YYYY-MM-DD") que existe no calendário. */
+export function dataIsoValida(texto: string): boolean {
+  const match = ISO_DATE.exec(texto);
+  return !!match && isRealDate(Number(match[1]), Number(match[2]), Number(match[3]));
+}
+
 /** "2026-10-04" → "04/10/2026". Retorna null se a entrada não for uma data ISO válida. */
 export function formatDateBR(isoDate: string): string | null {
   const match = ISO_DATE.exec(isoDate);
@@ -39,4 +45,12 @@ const dateTime = new Intl.DateTimeFormat("pt-BR", {
 
 export function formatDateTimeBR(instant: Date): string {
   return dateTime.format(instant).replace(",", "");
+}
+
+/** "2026-10-01" → "out/2026" (competência mensal). */
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+export function formatCompetenciaBR(isoDate: string): string | null {
+  const match = ISO_DATE.exec(isoDate);
+  if (!match) return null;
+  return `${MESES[Number(match[2]) - 1]}/${match[1]}`;
 }

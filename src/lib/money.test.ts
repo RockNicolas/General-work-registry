@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBRL, parseBRL } from "./money";
+import { formatBRL, formatDecimalBR, parseBRL } from "./money";
 
 // Intl usa espaço não separável entre "R$" e o valor.
 const norm = (s: string) => s.replace(/ /g, " ");
@@ -45,5 +45,17 @@ describe("parseBRL", () => {
     for (const centavos of [0, 1, 99, 100, 123456, -987654321]) {
       expect(parseBRL(formatBRL(centavos))).toBe(centavos);
     }
+  });
+});
+
+describe("formatDecimalBR", () => {
+  it("formata sem símbolo, para campos de entrada", () => {
+    expect(formatDecimalBR(123456)).toBe("1.234,56");
+    expect(formatDecimalBR(5)).toBe("0,05");
+    expect(formatDecimalBR(-100)).toBe("-1,00");
+  });
+
+  it("faz ida e volta com parseBRL", () => {
+    for (const c of [0, 1, 99, 100, 123456, -987654321]) expect(parseBRL(formatDecimalBR(c))).toBe(c);
   });
 });

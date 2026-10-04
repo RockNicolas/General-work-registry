@@ -3,7 +3,6 @@ import {
   date,
   foreignKey,
   index,
-  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -14,10 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { timestamps } from "./_helpers";
 import { organization, user } from "./auth";
-
-export const OBRA_STATUS = ["planejada", "ativa", "pausada", "concluida"] as const;
-export type ObraStatus = (typeof OBRA_STATUS)[number];
-export const obraStatus = pgEnum("obra_status", OBRA_STATUS);
+import { obraStatus } from "./enums";
 
 export const obra = pgTable(
   "obra",
