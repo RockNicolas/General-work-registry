@@ -72,6 +72,13 @@ O Next 16 não tem mais `next lint`: o lint é `eslint` direto.
 - Listas grandes: paginação no servidor com filtros na URL (GET, validados por Zod, valores inválidos descartados). Listas pequenas: `DataTable` (TanStack Table v8) no navegador.
 - Dados de demonstração: `scripts/seed-data.ts` (puro e determinístico, testado) + `scripts/seed.ts`.
 
+**Importação de planilhas (Fase 4)**
+- `src/features/importacoes/`: `modelo.ts` é a ÚNICA fonte das colunas (gera o modelo .xlsx/.csv, o leitor e as instruções). Pipeline: `ler-arquivo.ts` (xlsx via SheetJS 0.20 do CDN oficial — o pacote `xlsx` do npm está abandonado e vulnerável; exige assinatura ZIP; csv próprio em `csv.ts`) → `linhas.ts` (Zod por linha) → `montar-previa.ts` (puro: resolve obra/categoria/etapa e calcula a chave de idempotência) → `service.ts` (prévia guardada em `importacao.payload`; confirmação em UMA transação com `INSERT ... ON CONFLICT DO UPDATE ... WHERE ... IS DISTINCT FROM`, que devolve inseridos/atualizados/sem mudança).
+- Nada vai para as tabelas de negócio antes de confirmar. A confirmação "reserva" a importação (`status previa → processando`) para impedir confirmação dupla.
+- Chave de idempotência: `x:<id_externo>` ou `h:<hash do conteúdo>#<ocorrência>`. Orçamento deixa o valor FORA da chave (reimportar com valor novo atualiza); importar versão maior aposenta (`vigente=false`) a anterior.
+- Dentro de uma transação (`withScope`), consultas são **sequenciais**: `Promise.all` na mesma `tx` compartilha a conexão (o `pg` 9 vai proibir).
+- Upload é um Route Handler (`/api/importacoes`), não Server Action (limite de 1 MB do corpo).
+
 **Validação e erros**
 - Toda entrada externa (formulário, planilha, webhook, ERP) passa por Zod antes de tocar o banco.
 - Variáveis de ambiente só via `getEnv()` (`src/server/env.ts`); novas variáveis entram no schema Zod **e** no `.env.example`.

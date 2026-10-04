@@ -1,0 +1,1 @@
+ALTER TABLE "importacao" ADD COLUMN "usuario_nome" text;

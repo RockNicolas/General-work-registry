@@ -1,4 +1,4 @@
-import { foreignKey, index, integer, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
+import { foreignKey, index, integer, jsonb, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
 import { timestamps } from "./_helpers";
 import { organization, user } from "./auth";
 import { importacaoStatus } from "./enums";
@@ -12,6 +12,8 @@ export const importacao = pgTable(
       .notNull()
       .references(() => organization.id, { onDelete: "restrict" }),
     usuarioId: text("usuario_id").references(() => user.id, { onDelete: "set null" }),
+    /** Nome de quem enviou, guardado junto (o papel do app não lê a tabela de usuários). */
+    usuarioNome: text("usuario_nome"),
     arquivoNome: text("arquivo_nome").notNull(),
     /** sha256 do conteúdo: avisa quando o mesmo arquivo é enviado de novo. */
     arquivoHash: text("arquivo_hash").notNull(),
@@ -19,6 +21,10 @@ export const importacao = pgTable(
     total: integer("total").notNull().default(0),
     ok: integer("ok").notNull().default(0),
     comErro: integer("com_erro").notNull().default(0),
+    /** Linhas já validadas aguardando confirmação (status previa); some depois de confirmar/cancelar. */
+    payload: jsonb("payload"),
+    /** Contagens finais: inseridos, atualizados, inalterados, por conjunto de dados. */
+    resumo: jsonb("resumo"),
     ...timestamps,
   },
   (t) => [

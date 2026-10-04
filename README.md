@@ -72,6 +72,16 @@ pnpm worker
 docker compose --profile app up --build
 ```
 
+## Importação de planilhas
+
+Administrador: menu **Importações**. Baixe o modelo (`.xlsx` com instruções, listas suspensas e abas `Lancamentos`, `Orcamento` e `AvancoFisico`; ou `.csv` por conjunto), preencha e envie.
+O sistema mostra uma **prévia** e os **erros por linha** (aba, linha, coluna, valor informado e motivo) e só grava quando você confirma.
+
+- Aceita `.xlsx` e `.csv` (separador `;` ou `,`, UTF-8 ou Windows-1252). Até 10 MB e 20.000 linhas por conjunto.
+- Código da obra, nome da categoria e código da etapa precisam existir (cadastre antes). A importação é por empresa.
+- **Reimportar não duplica.** Com a coluna `id_externo`, reenviar uma linha a **atualiza**; sem ela, linhas idênticas são reconhecidas pelo conteúdo.
+- Tudo é gravado numa única transação: se algo falhar, nada é alterado.
+
 ## Scripts
 
 | Comando | O que faz |

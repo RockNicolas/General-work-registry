@@ -36,6 +36,20 @@
       "when": 1791147688064,
       "tag": "0004_rls_dominio",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791150652427,
+      "tag": "0005_importacao_payload",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791150744454,
+      "tag": "0006_importacao_usuario_nome",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,7 @@ import {
   avancoFisico,
   categoria,
   etapa,
+  importacao,
   lancamento,
   member,
   obra,
@@ -37,6 +38,7 @@ const chunk = <T>(xs: T[], n: number) => Array.from({ length: Math.ceil(xs.lengt
 async function limpar() {
   const db = getDb();
   await db.delete(lancamento).where(inArray(lancamento.empresaId, idsDemo));
+  await db.delete(importacao).where(inArray(importacao.empresaId, idsDemo)); // depois dos lançamentos (FK)
   await db.delete(obra).where(inArray(obra.empresaId, idsDemo)); // cascata: etapa, orcamento, avanco, obra_acesso
   await db.delete(categoria).where(inArray(categoria.empresaId, idsDemo));
   await db.delete(auditoria).where(inArray(auditoria.empresaId, idsDemo));

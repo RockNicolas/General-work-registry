@@ -3,7 +3,7 @@ import { upsertUsuarioCredencial } from "../src/server/auth-users";
 import { getDb, getPool } from "../src/server/db/client";
 import { runMigrations } from "../src/server/db/migrate";
 import { CATEGORIAS_PADRAO } from "../src/features/categorias/service";
-import { auditoria, categoria, lancamento, member, obra, obraAcesso, organization, user } from "../src/server/db/schema";
+import { auditoria, categoria, importacao, lancamento, member, obra, obraAcesso, organization, user } from "../src/server/db/schema";
 import { E2E } from "./users";
 
 /** Remove o que execuções anteriores do e2e criaram pela interface (nomes com prefixo E2E). */
@@ -12,7 +12,11 @@ async function limparResiduos() {
   const fixas = [E2E.empresa.id, E2E.outraEmpresa.id];
   const codigosFixos = [E2E.obras.a1.codigo, E2E.obras.a2.codigo, E2E.obras.b1.codigo];
 
-  // Obras extras nas empresas fixas (e seus lançamentos).
+  // Lançamentos e importações que testes anteriores criaram nas empresas fixas.
+  await db.delete(lancamento).where(inArray(lancamento.empresaId, fixas));
+  await db.delete(importacao).where(inArray(importacao.empresaId, fixas));
+
+  // Obras extras nas empresas fixas.
   const extras = await db
     .select({ id: obra.id })
     .from(obra)
@@ -31,6 +35,7 @@ async function limparResiduos() {
   if (criadas.length) {
     const ids = criadas.map((o) => o.id);
     await db.delete(lancamento).where(inArray(lancamento.empresaId, ids));
+    await db.delete(importacao).where(inArray(importacao.empresaId, ids));
     await db.delete(obra).where(inArray(obra.empresaId, ids));
     await db.delete(categoria).where(inArray(categoria.empresaId, ids));
     await db.delete(auditoria).where(inArray(auditoria.empresaId, ids));
