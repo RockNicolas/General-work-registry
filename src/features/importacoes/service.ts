@@ -3,6 +3,9 @@ import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { registrarAuditoria } from "@/features/auditoria/registrar";
 import type { AppContext } from "@/features/auth/context";
 import { ActionError } from "@/lib/action-result";
+import { upsertAvanco } from "@/features/avanco/upsert";
+import { CONTAGEM_ZERO, type ContagemConjunto, somarContagens, upsertLancamentos } from "@/features/lancamentos/upsert";
+import { upsertOrcamento } from "@/features/orcamento/upsert";
 import type { ImportacaoStatus } from "@/lib/domain";
 import { categoria, etapa, importacao, importacaoErro, obra, organization } from "@/server/db/schema";
 import { type Tx, withScope } from "@/server/db/scope";
@@ -23,7 +26,6 @@ import {
 
 const MAX_ERROS_GUARDADOS = 1000;
 const AMOSTRA = 50;
-const LOTE = 300;
 
 /** O que fica guardado entre a prévia e a confirmação. */
 export type PayloadPrevia = {
@@ -33,7 +35,7 @@ export type PayloadPrevia = {
   avisos: string[];
 };
 
-export type ContagemConjunto = { inseridos: number; atualizados: number; inalterados: number };
+export type { ContagemConjunto };
 export type ResumoImportacao = {
   errosTotal?: number;
   lancamentos?: ContagemConjunto;
@@ -260,89 +262,21 @@ export async function criarPrevia(
 
 // ---------- Confirmação ----------
 
-type Linhas<T> = T[];
-const em = <T>(xs: Linhas<T>, n: number): T[][] => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
-
-function contar(lote: number, retornadas: { inserido: boolean }[]): ContagemConjunto {
-  const inseridos = retornadas.filter((r) => r.inserido).length;
-  return { inseridos, atualizados: retornadas.length - inseridos, inalterados: lote - retornadas.length };
-}
-
-const somar = (a: ContagemConjunto, b: ContagemConjunto): ContagemConjunto => ({
-  inseridos: a.inseridos + b.inseridos,
-  atualizados: a.atualizados + b.atualizados,
-  inalterados: a.inalterados + b.inalterados,
-});
-const ZERO: ContagemConjunto = { inseridos: 0, atualizados: 0, inalterados: 0 };
 
 async function gravarLancamentos(tx: Tx, empresaId: string, importacaoId: string, itens: LancamentoImportar[]): Promise<ContagemConjunto> {
-  let total = ZERO;
-  for (const lote of em(itens, LOTE)) {
-    const valores = sql.join(
-      lote.map(
-        (l) => sql`(${empresaId}, ${l.obraId}::uuid, ${l.etapaId}::uuid, ${l.categoriaId}::uuid, ${l.tipo}::lancamento_tipo,
-          ${l.situacao}::lancamento_situacao, ${l.classe}::lancamento_classe, ${l.isPrevisao}::boolean, ${l.valorCentavos}::bigint,
-          ${l.dataCompetencia}::date, ${l.dataVencimento}::date, ${l.dataLiquidacao}::date, ${l.contraparte}::text,
-          ${l.documento}::text, ${l.descricao}::text, 'planilha'::origem, ${importacaoId}::uuid, ${l.idOrigem}::text)`,
-      ),
-      sql`, `,
-    );
-    const r = await tx.execute(sql`
-      insert into lancamento
-        (empresa_id, obra_id, etapa_id, categoria_id, tipo, situacao, classe, is_previsao, valor_centavos,
-         data_competencia, data_vencimento, data_liquidacao, contraparte, documento, descricao, origem, importacao_id, id_origem)
-      values ${valores}
-      on conflict (empresa_id, origem, (coalesce(integracao_id, '00000000-0000-0000-0000-000000000000'::uuid)), id_origem)
-        where id_origem is not null
-      do update set
-        obra_id = excluded.obra_id, etapa_id = excluded.etapa_id, categoria_id = excluded.categoria_id,
-        tipo = excluded.tipo, situacao = excluded.situacao, classe = excluded.classe, is_previsao = excluded.is_previsao,
-        valor_centavos = excluded.valor_centavos, data_competencia = excluded.data_competencia,
-        data_vencimento = excluded.data_vencimento, data_liquidacao = excluded.data_liquidacao,
-        contraparte = excluded.contraparte, documento = excluded.documento, descricao = excluded.descricao,
-        importacao_id = excluded.importacao_id, updated_at = now()
-      where (lancamento.obra_id, lancamento.etapa_id, lancamento.categoria_id, lancamento.tipo, lancamento.situacao,
-             lancamento.classe, lancamento.is_previsao, lancamento.valor_centavos, lancamento.data_competencia,
-             lancamento.data_vencimento, lancamento.data_liquidacao, lancamento.contraparte, lancamento.documento,
-             lancamento.descricao)
-        is distinct from
-            (excluded.obra_id, excluded.etapa_id, excluded.categoria_id, excluded.tipo, excluded.situacao,
-             excluded.classe, excluded.is_previsao, excluded.valor_centavos, excluded.data_competencia,
-             excluded.data_vencimento, excluded.data_liquidacao, excluded.contraparte, excluded.documento,
-             excluded.descricao)
-      returning (xmax = 0) as inserido`);
-    total = somar(total, contar(lote.length, r.rows as { inserido: boolean }[]));
-  }
-  return total;
+  return upsertLancamentos(
+    tx,
+    { empresaId, origem: "planilha", integracaoId: null, importacaoId },
+    itens.map((l) => ({ ...l, classe: l.classe })),
+  );
 }
 
 async function gravarOrcamento(tx: Tx, empresaId: string, itens: OrcamentoImportar[]): Promise<ContagemConjunto> {
-  let total = ZERO;
-  for (const lote of em(itens, LOTE)) {
-    const valores = sql.join(
-      lote.map(
-        (o) => sql`(${empresaId}, ${o.obraId}::uuid, ${o.etapaId}::uuid, ${o.categoriaId}::uuid, ${o.versao}::int, true,
-          ${o.descricao}::text, ${o.valorPrevistoCentavos}::bigint, 'planilha'::origem, ${o.idOrigem}::text)`,
-      ),
-      sql`, `,
-    );
-    const r = await tx.execute(sql`
-      insert into orcamento
-        (empresa_id, obra_id, etapa_id, categoria_id, versao, vigente, descricao, valor_previsto_centavos, origem, id_origem)
-      values ${valores}
-      on conflict (empresa_id, origem, id_origem) where id_origem is not null
-      do update set
-        obra_id = excluded.obra_id, etapa_id = excluded.etapa_id, categoria_id = excluded.categoria_id,
-        versao = excluded.versao, descricao = excluded.descricao,
-        valor_previsto_centavos = excluded.valor_previsto_centavos, updated_at = now()
-      where (orcamento.obra_id, orcamento.etapa_id, orcamento.categoria_id, orcamento.versao, orcamento.descricao,
-             orcamento.valor_previsto_centavos)
-        is distinct from
-            (excluded.obra_id, excluded.etapa_id, excluded.categoria_id, excluded.versao, excluded.descricao,
-             excluded.valor_previsto_centavos)
-      returning (xmax = 0) as inserido`);
-    total = somar(total, contar(lote.length, r.rows as { inserido: boolean }[]));
-  }
+  const total = await upsertOrcamento(
+    tx,
+    { empresaId, origem: "planilha" },
+    itens.map((o) => ({ ...o, valorPrevistoCentavos: o.valorPrevistoCentavos })),
+  );
 
   // Vigente = a versão mais alta da obra entre os itens de planilha (importar a v2 aposenta a v1).
   const obraIds = [...new Set(itens.map((i) => i.obraId))];
@@ -358,25 +292,7 @@ async function gravarOrcamento(tx: Tx, empresaId: string, itens: OrcamentoImport
 }
 
 async function gravarAvanco(tx: Tx, empresaId: string, itens: AvancoImportar[]): Promise<ContagemConjunto> {
-  let total = ZERO;
-  for (const lote of em(itens, LOTE)) {
-    const valores = sql.join(
-      lote.map(
-        (a) => sql`(${empresaId}, ${a.obraId}::uuid, ${a.competencia}::date, ${a.tipo}::avanco_tipo, ${a.versao}::smallint,
-          ${a.pctMesBps}::int, ${a.pctAcumBps}::int)`,
-      ),
-      sql`, `,
-    );
-    const r = await tx.execute(sql`
-      insert into avanco_fisico (empresa_id, obra_id, competencia, tipo, versao, pct_mes_bps, pct_acum_bps)
-      values ${valores}
-      on conflict (obra_id, tipo, versao, competencia)
-      do update set pct_mes_bps = excluded.pct_mes_bps, pct_acum_bps = excluded.pct_acum_bps, updated_at = now()
-      where (avanco_fisico.pct_mes_bps, avanco_fisico.pct_acum_bps) is distinct from (excluded.pct_mes_bps, excluded.pct_acum_bps)
-      returning (xmax = 0) as inserido`);
-    total = somar(total, contar(lote.length, r.rows as { inserido: boolean }[]));
-  }
-  return total;
+  return upsertAvanco(tx, empresaId, itens);
 }
 
 export async function confirmarImportacao(ctx: AppContext, id: string): Promise<ResumoImportacao> {
@@ -405,7 +321,7 @@ export async function confirmarImportacao(ctx: AppContext, id: string): Promise<
         .where(eq(importacao.id, id));
 
       const conjuntos = [resumo.lancamentos, resumo.orcamento, resumo.avanco].filter((c): c is ContagemConjunto => !!c);
-      const soma = conjuntos.reduce(somar, ZERO);
+      const soma = conjuntos.reduce(somarContagens, CONTAGEM_ZERO);
       await registrarAuditoria(tx, ctx, {
         acao: "importar",
         entidade: "importacao",

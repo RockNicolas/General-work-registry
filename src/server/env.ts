@@ -9,6 +9,16 @@ const envSchema = z.object({
     .string()
     .min(32, "mínimo de 32 caracteres (gere com: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\")"),
   BETTER_AUTH_URL: z.url().default("http://localhost:3000"),
+  /** Chave AES-256 (32 bytes em base64) que protege as credenciais de ERP. Obrigatória só ao usar integrações. */
+  ENCRYPTION_KEY: z
+    .string()
+    .refine((v) => Buffer.from(v, "base64").length === 32, "deve ser 32 bytes em base64 (gere com: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\")")
+    .optional(),
+  /** Só dev/teste: permite informar uma URL base completa no lugar do subdomínio do ERP (evita SSRF em produção). */
+  ERP_ALLOW_CUSTOM_BASE_URL: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 export type Env = z.infer<typeof envSchema>;

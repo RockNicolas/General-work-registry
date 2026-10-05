@@ -1,4 +1,4 @@
-import { Building2, FileUp, HardHat, History, LayoutDashboard, type LucideIcon, Tags, Users } from "lucide-react";
+import { Building2, FileUp, HardHat, History, LayoutDashboard, type LucideIcon, Plug, Tags, Users } from "lucide-react";
 import type { AppContext } from "@/features/auth/context";
 import { can, type Resource } from "@/features/auth/policies";
 
@@ -28,6 +28,7 @@ const NAV: NavGroup[] = [
       { title: "Usuários", href: "/admin/usuarios", icon: Users, resource: "usuario" },
       { title: "Categorias", href: "/admin/categorias", icon: Tags, resource: "empresa" },
       { title: "Importações", href: "/importacoes", icon: FileUp, resource: "importacao" },
+      { title: "Integrações", href: "/admin/integracoes", icon: Plug, resource: "integracao" },
       { title: "Auditoria", href: "/admin/auditoria", icon: History, resource: "auditoria" },
     ],
   },

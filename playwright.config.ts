@@ -7,6 +7,10 @@ try {
 }
 // O servidor de dev herda este ambiente; o segredo só precisa existir e ter 32+ caracteres.
 process.env.BETTER_AUTH_SECRET ??= "segredo-apenas-para-e2e-0123456789abcdef";
+// Integrações: chave só para o e2e (32 bytes em base64) e permissão de endereço personalizado, para o
+// servidor falar com o Sienge falso local. O flag vale só para o servidor que o Playwright sobe.
+process.env.ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
+process.env.ERP_ALLOW_CUSTOM_BASE_URL = "true";
 
 export default defineConfig({
   testDir: "./e2e",

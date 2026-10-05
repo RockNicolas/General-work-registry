@@ -60,11 +60,14 @@ Se a porta 5432 estiver ocupada: `DB_PORT=5433 docker compose up -d db` e use `l
 
 ### Worker (sincronização com ERPs)
 
-O pg-boss roda num processo separado do Next:
+O pg-boss roda num processo separado do Next. **Sem ele, o botão "Sincronizar agora" só enfileira** (a execução fica "Na fila")
+e os agendamentos não disparam:
 
 ```bash
-pnpm worker
+pnpm worker          # lê o .env; em produção: pnpm worker:prod com as variáveis do serviço
 ```
+
+Rode **um** worker por banco. Para o e2e (`pnpm test:e2e`) não precisa de worker, mas pare qualquer outro apontando para o mesmo banco.
 
 ### Tudo em contêineres (opcional)
 
@@ -81,6 +84,32 @@ O sistema mostra uma **prévia** e os **erros por linha** (aba, linha, coluna, v
 - Código da obra, nome da categoria e código da etapa precisam existir (cadastre antes). A importação é por empresa.
 - **Reimportar não duplica.** Com a coluna `id_externo`, reenviar uma linha a **atualiza**; sem ela, linhas idênticas são reconhecidas pelo conteúdo.
 - Tudo é gravado numa única transação: se algo falhar, nada é alterado.
+
+## Integração com o Sienge
+
+Administrador: menu **Integrações**. Cada integração liga **uma empresa** a **um ERP** (hoje só o Sienge sincroniza; UAU e Lumia
+ficam cadastráveis, aguardando a documentação da API).
+
+1. **Nova integração**: empresa, subdomínio do Sienge (`minhaempresa` de `minhaempresa.sienge.com.br`), usuário e senha da API
+   (criptografados com `ENCRYPTION_KEY`; a senha nunca é exibida de volta) e o **código do indexador de correção** do Sienge.
+2. **Testar conexão**: valida as credenciais e ativa a integração. Mudar endereço ou credenciais volta ao estado "Pausada".
+3. **Vincular obras**: "Buscar obras no ERP" lista os empreendimentos; escolha a obra do RGO de cada um (ou crie as que faltam).
+   Só obras vinculadas são sincronizadas.
+4. **Sincronizar agora** (incremental: reprocessa os últimos meses configurados) ou **Carga histórica** (todo o período).
+   A sincronização automática (a cada 6 h, diária, dias úteis) e o webhook são opcionais.
+
+O que entra: custos (contas a pagar, pagos = realizado, saldo = a realizar), receitas (contas a receber), orçamento por etapa e
+grupo, e avanço físico. Tudo passa pelo mesmo caminho das planilhas: **reexecutar não duplica** e o que sumiu do ERP é removido
+(com trava contra exclusão em massa). Respeita os limites do Sienge (200 req/min REST, 20 req/min bulk) com repetição e espera.
+
+**Antes de confiar nos números, valide com a sua conta Sienge** (o mapeamento segue a documentação oficial, mas ainda não foi
+conferido com dados reais): se as parcelas pagas chegam com `payments` na consulta por data de competência; a escala dos percentuais
+(0–100 ou 0–1) e se o valor da baixa é líquido ou bruto (ambos ajustáveis na integração); o significado de `forecastDocument` para
+"título de previsão"; e os nomes dos eventos de webhook. Compare um mês fechado com o relatório do Sienge.
+
+**Webhook (opcional):** a tela da integração mostra a URL e gera um segredo (exibido uma única vez; guardamos só o hash). O ERP deve
+chamar `POST /api/webhooks/sienge/<id>` com `Authorization: Bearer <segredo>`. O corpo é ignorado: o aviso só dispara uma sincronização
+incremental (no máximo uma por minuto por integração). A URL precisa ser pública: em desenvolvimento use um túnel.
 
 ## Scripts
 

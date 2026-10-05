@@ -8,6 +8,7 @@ try {
   // sem .env
 }
 process.env.BETTER_AUTH_SECRET ??= "segredo-apenas-para-testes-0123456789abcdef";
+process.env.ENCRYPTION_KEY ??= Buffer.alloc(32, 3).toString("base64"); // só para os testes
 
 export default defineConfig({
   resolve: {

@@ -62,7 +62,7 @@ test.describe("isolamento entre perfis (pela interface)", () => {
 
   test("áreas de administração dão 404 para quem não é administrador", async ({ page }) => {
     await entrar(page, E2E.empresaUser.email);
-    for (const rota of ["/admin/empresas", "/admin/usuarios", "/admin/categorias", "/admin/auditoria"]) {
+    for (const rota of ["/admin/empresas", "/admin/usuarios", "/admin/categorias", "/admin/auditoria", "/admin/integracoes", `/admin/integracoes/${E2E.integracao.id}`]) {
       const resposta = await page.goto(rota);
       expect(resposta?.status(), rota).toBe(404);
     }

@@ -24,7 +24,7 @@ O Next 16 não tem mais `next lint`: o lint é `eslint` direto.
 - Perfis: **Administrador** (global; único que cria/edita/importa/sincroniza), **Empresa** (somente leitura, só as próprias obras), **Cliente contratado** (somente leitura, só obras vinculadas; pode ter vínculo com mais de uma empresa).
 - Empresa = `organization` do Better Auth (com campos extras).
 - Saldos de pedidos/contratos, estoque e fluxo de caixa projetado ficam na **Fase 8** (pós-MVP).
-- Trabalho em fases; ao fim de cada uma: `pnpm check` (+ e2e quando houver UI), resumo e **parar para aprovação**.
+- Trabalho em fases; ao fim de cada uma: `pnpm check` (+ e2e quando houver UI), commit em `develop` e resumo. O usuário autorizou seguir para as fases seguintes sem aguardar aprovação a cada uma (só parar se houver bloqueio real); o merge `develop` → `main` continua dependendo dele.
 
 ## Git e ambientes
 
@@ -78,6 +78,14 @@ O Next 16 não tem mais `next lint`: o lint é `eslint` direto.
 - Chave de idempotência: `x:<id_externo>` ou `h:<hash do conteúdo>#<ocorrência>`. Orçamento deixa o valor FORA da chave (reimportar com valor novo atualiza); importar versão maior aposenta (`vigente=false`) a anterior.
 - Dentro de uma transação (`withScope`), consultas são **sequenciais**: `Promise.all` na mesma `tx` compartilha a conexão (o `pg` 9 vai proibir).
 - Upload é um Route Handler (`/api/importacoes`), não Server Action (limite de 1 MB do corpo).
+
+**Integrações com ERP (Fase 5)**
+- `src/features/integracoes/`: `erp/tipos.ts` define o contrato `ErpAdapter` (o resto do sistema só conhece ele); `erp/registro.ts` escolhe o adaptador (Sienge funcional, UAU esqueleto com `validarEndereco`, Lumia stub). Sienge: `sienge/client.ts` (Basic auth, limitadores REST 200/min e BULK 20/min compartilhados por subdomínio, retry com backoff/jitter, `Retry-After`, 429 pausa o limitador, URL anti-SSRF), `sienge/schemas.ts` (Zod do que o ERP devolve), `sienge/mappers.ts` (puro: rateio por percentual com maior resto, pago→realizado, saldo→a realizar, `forecastDocument`→previsão, orçamento por etapa×grupo, avanço ponderado).
+- `sync.ts` orquestra uma execução (`sincronizacao` com contadores e log): lê pelo adaptador, grava com os MESMOS upserts da importação (`lancamentos|orcamento|avanco/upsert.ts`, idempotentes por `(empresa, origem, integração, id_origem)`) e varre o que sumiu do ERP, com trava contra exclusão em massa. Falhas do ERP ficam na linha de execução; só erro de infraestrutura vira exceção (o pg-boss marca o job).
+- Fila `erp-sync` (pg-boss, política `stately`: no máximo 1 na fila + 1 ativa por integração; rajada de eventos vira uma sincronização). `worker/index.ts` consome e roda `reconciliarAgendamentos` ao subir (cron em UTC). A tela só enfileira (`solicitarSincronizacao`); **sem worker nada executa**.
+- Credenciais: `crypto.ts` (AES-256-GCM, AAD `integracao:<id>`, versão de chave no valor). `ENCRYPTION_KEY` não pode ser perdida nem trocada. Credencial reenviada igual à atual não conta como alteração. Mudou endereço/credenciais → integração volta a `pausada` até novo teste.
+- Webhook (`/api/webhooks/[erp]/[integracaoId]`): `Authorization: Bearer` comparado por hash em tempo constante; 401 idêntico para id inexistente, ERP errado e segredo errado; corpo nunca é confiado, só dispara sincronização incremental.
+- Testes: unitários com o Sienge falso (`src/test/fake-sienge.ts`, servidor HTTP com os formatos dos OpenAPI); integração com Postgres e pg-boss reais (`sync`, `service`, `fila`); e2e contra o Sienge falso (o Playwright liga `ERP_ALLOW_CUSTOM_BASE_URL=true` só para o servidor dele). Nunca testar contra o Sienge real.
 
 **Validação e erros**
 - Toda entrada externa (formulário, planilha, webhook, ERP) passa por Zod antes de tocar o banco.

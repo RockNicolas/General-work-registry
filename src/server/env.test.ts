@@ -26,6 +26,18 @@ describe("parseEnv", () => {
     expect(() => parseEnv({ ...base, BETTER_AUTH_SECRET: "curto" })).toThrow(/BETTER_AUTH_SECRET/);
   });
 
+  it("ENCRYPTION_KEY é opcional, mas se vier precisa ter 32 bytes em base64", () => {
+    expect(parseEnv(base).ENCRYPTION_KEY).toBeUndefined();
+    const boa = Buffer.alloc(32, 7).toString("base64");
+    expect(parseEnv({ ...base, ENCRYPTION_KEY: boa }).ENCRYPTION_KEY).toBe(boa);
+    expect(() => parseEnv({ ...base, ENCRYPTION_KEY: "curta" })).toThrow(/ENCRYPTION_KEY/);
+  });
+
+  it("ERP_ALLOW_CUSTOM_BASE_URL é falso por padrão", () => {
+    expect(parseEnv(base).ERP_ALLOW_CUSTOM_BASE_URL).toBe(false);
+    expect(parseEnv({ ...base, ERP_ALLOW_CUSTOM_BASE_URL: "true" }).ERP_ALLOW_CUSTOM_BASE_URL).toBe(true);
+  });
+
   it("falha quando BETTER_AUTH_URL não é uma URL", () => {
     expect(() => parseEnv({ ...base, BETTER_AUTH_URL: "localhost" })).toThrow(/BETTER_AUTH_URL/);
   });
