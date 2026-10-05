@@ -85,6 +85,22 @@ O sistema mostra uma **prévia** e os **erros por linha** (aba, linha, coluna, v
 - **Reimportar não duplica.** Com a coluna `id_externo`, reenviar uma linha a **atualiza**; sem ela, linhas idênticas são reconhecidas pelo conteúdo.
 - Tudo é gravado numa única transação: se algo falhar, nada é alterado.
 
+## Painel de indicadores
+
+**Visão geral** (todos os perfis, somente leitura; cada um vê só as próprias obras): custo, receita e margem por obra, por empresa e consolidado.
+Filtros por empresa, obra, grupo de custo e período ficam na URL (o link é compartilhável). Mostra:
+
+- KPIs do período: receita e custo realizados (e a receber/a pagar), margem realizada e projetada, obras;
+- receita × custo × margem mês a mês;
+- por obra: **orçado × comprometido × incorrido**, desvio do orçamento e margens (clique no cabeçalho para ordenar = ranking);
+- **% comprometido por grupo** (materiais, máquinas e equipamentos, MOD, MOI, serviços...);
+- custo por categoria e por etapa; avanço físico planejado × realizado; contas a pagar/receber por **faixa de vencimento**
+  (30/45/60/90/120 dias, com e sem título de previsão); e, à parte, aportes/adiantamentos/devoluções (fora da margem).
+
+Regras: só lançamentos **operacionais** entram na margem; comprometido = pago + a pagar; o orçado é o orçamento **vigente**.
+Resultado, evolução e distribuições usam o período (por competência); orçado × comprometido, grupos e avanço são **acumulados até o mês final**;
+vencimentos olham a partir de hoje. A seção "Como os números são calculados" da própria tela repete isso.
+
 ## Integração com o Sienge
 
 Administrador: menu **Integrações**. Cada integração liga **uma empresa** a **um ERP** (hoje só o Sienge sincroniza; UAU e Lumia

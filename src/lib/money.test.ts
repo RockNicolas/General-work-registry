@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBRL, formatDecimalBR, parseBRL } from "./money";
+import { formatBRL, formatBRLCompact, formatDecimalBR, parseBRL } from "./money";
 
 // Intl usa espaço não separável entre "R$" e o valor.
 const norm = (s: string) => s.replace(/ /g, " ");
@@ -17,6 +17,19 @@ describe("formatBRL", () => {
 
   it("rejeita valores não inteiros", () => {
     expect(() => formatBRL(10.5)).toThrow(RangeError);
+  });
+});
+
+describe("formatBRLCompact", () => {
+  it("abrevia valores grandes para eixos de gráfico", () => {
+    expect(norm(formatBRLCompact(123_456_789))).toBe("R$ 1,2 mi");
+    expect(norm(formatBRLCompact(35_000_000))).toBe("R$ 350 mil");
+    expect(norm(formatBRLCompact(0))).toBe("R$ 0");
+  });
+
+  it("negativos mantêm o sinal e aceita não inteiros (o eixo interpola)", () => {
+    expect(norm(formatBRLCompact(-123_456_789))).toBe("-R$ 1,2 mi");
+    expect(() => formatBRLCompact(12_345.5)).not.toThrow();
   });
 });
 

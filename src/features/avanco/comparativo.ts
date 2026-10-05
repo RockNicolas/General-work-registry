@@ -18,11 +18,20 @@ export type ComparativoMes = {
   desvioAcumBps: number | null;
 };
 
+/** A linha de base do planejamento: a MENOR versão planejada existente (planilha usa 0; o Sienge, 1). */
+export function versaoBase(linhas: AvancoLinha[]): number | null {
+  let menor: number | null = null;
+  for (const l of linhas) if (l.tipo === "planejado" && (menor === null || l.versao < menor)) menor = l.versao;
+  return menor;
+}
+
 /**
- * Junta planejado e realizado por mês. O planejado vem da `versaoPlanejada` (0 = linha de base);
- * o realizado não tem versão relevante: vale o mais recente lançado para o mês.
+ * Junta planejado e realizado por mês. O planejado vem da `versaoPlanejada`; sem ela, da linha de
+ * base (a menor versão planejada existente). O realizado não tem versão relevante: vale o mais
+ * recente lançado para o mês.
  */
-export function compararAvanco(linhas: AvancoLinha[], versaoPlanejada = 0): ComparativoMes[] {
+export function compararAvanco(linhas: AvancoLinha[], versaoPlanejada?: number): ComparativoMes[] {
+  const versaoPlan = versaoPlanejada ?? versaoBase(linhas);
   const meses = new Map<string, ComparativoMes>();
   const ensure = (competencia: string): ComparativoMes => {
     let m = meses.get(competencia);
@@ -43,7 +52,7 @@ export function compararAvanco(linhas: AvancoLinha[], versaoPlanejada = 0): Comp
   const versaoRealizado = new Map<string, number>();
   for (const l of linhas) {
     const m = ensure(l.competencia);
-    if (l.tipo === "planejado" && l.versao === versaoPlanejada) {
+    if (l.tipo === "planejado" && l.versao === versaoPlan) {
       m.planejadoMesBps = l.pctMesBps;
       m.planejadoAcumBps = l.pctAcumBps;
     }

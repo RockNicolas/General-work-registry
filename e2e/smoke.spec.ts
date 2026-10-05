@@ -33,7 +33,8 @@ test.describe("autenticação", () => {
   test("administrador entra, vê o painel e sai", async ({ page }) => {
     await entrar(page, E2E.admin.email);
     await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.getByRole("heading", { name: "Olá, Ana" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+    await expect(page.getByText(/Olá, Ana./)).toBeVisible();
 
     await page.getByRole("button", { name: "Menu do usuário" }).click();
     await expect(page.getByText("Administrador")).toBeVisible();
@@ -65,15 +66,19 @@ test.describe("autenticação", () => {
 test.describe("perfis", () => {
   test("empresa vê o painel em modo leitura", async ({ page }) => {
     await entrar(page, E2E.empresaUser.email);
-    await expect(page.getByRole("heading", { name: "Olá, Eva" })).toBeVisible();
-    await expect(page.getByText("em modo leitura").first()).toBeVisible();
-    await expect(page.getByText("1 empresa(s)")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+    await expect(page.getByText(/Olá, Eva./)).toBeVisible();
+    // Em modo leitura: o painel e as obras da própria empresa, sem a administração.
+    await expect(page.getByRole("link", { name: new RegExp(E2E.obras.a1.codigo) })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Usuários" })).toHaveCount(0);
   });
 
   test("cliente vê só o que foi liberado", async ({ page }) => {
     await entrar(page, E2E.clienteUser.email);
-    await expect(page.getByRole("heading", { name: "Olá, Caio" })).toBeVisible();
-    await expect(page.getByText("1 empresa(s) e 1 obra(s) liberada(s)")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+    await expect(page.getByText(/Olá, Caio./)).toBeVisible();
+    await expect(page.getByRole("link", { name: new RegExp(E2E.obras.a1.codigo) })).toBeVisible();
+    await expect(page.getByRole("link", { name: new RegExp(E2E.obras.a2.codigo) })).toHaveCount(0);
   });
 
   test("usuário sem vínculo cai na tela de sem acesso", async ({ page }) => {

@@ -4,15 +4,16 @@ import { upsertUsuarioCredencial } from "../src/server/auth-users";
 import { getDb, getPool } from "../src/server/db/client";
 import { runMigrations } from "../src/server/db/migrate";
 import { CATEGORIAS_PADRAO } from "../src/features/categorias/service";
-import { auditoria, categoria, importacao, integracao, lancamento, member, obra, obraAcesso, organization, sincronizacao, user } from "../src/server/db/schema";
+import { hojeEmSaoPaulo, mesDe, somarDias } from "../src/features/dashboards/periodo";
+import { auditoria, categoria, importacao, integracao, lancamento, member, obra, obraAcesso, orcamento, organization, sincronizacao, user } from "../src/server/db/schema";
 import { CREDENCIAIS_FAKE, empreendimento, iniciarFakeSienge } from "../src/test/fake-sienge";
 import { E2E } from "./users";
 
 /** Remove o que execuções anteriores do e2e criaram pela interface (nomes com prefixo E2E). */
 async function limparResiduos() {
   const db = getDb();
-  const fixas = [E2E.empresa.id, E2E.outraEmpresa.id];
-  const codigosFixos = [E2E.obras.a1.codigo, E2E.obras.a2.codigo, E2E.obras.b1.codigo];
+  const fixas = [E2E.empresa.id, E2E.outraEmpresa.id, E2E.painel.id];
+  const codigosFixos = [E2E.obras.a1.codigo, E2E.obras.a2.codigo, E2E.obras.b1.codigo, E2E.painel.obra.codigo];
 
   // Integrações (com vínculos e execuções, por cascata) antes de lançamentos e obras que as referenciam.
   await db.delete(lancamento).where(inArray(lancamento.empresaId, fixas));
@@ -53,6 +54,34 @@ async function limparResiduos() {
 }
 
 /**
+ * Dados do painel (empresa "E2E Painel"): valores redondos e datas relativas a HOJE, para que o período
+ * padrão (12 meses) e as faixas de vencimento sejam sempre os mesmos. Totais esperados nos testes:
+ * receita R$ 8.000 (+ R$ 3.000 a receber), custo R$ 2.500 (+ R$ 1.700 a pagar), orçado R$ 10.000,
+ * aporte de R$ 5.000 fora da margem.
+ */
+async function semearPainel(obraId: string) {
+  const db = getDb();
+  const empresaId = E2E.painel.id;
+  const hoje = hojeEmSaoPaulo();
+  const competencia = `${mesDe(hoje)}-01`;
+  const cats = await db.select({ id: categoria.id, nome: categoria.nome }).from(categoria).where(eq(categoria.empresaId, empresaId));
+  const cat = (nome: string) => cats.find((c) => c.nome === nome)!.id;
+
+  await db.delete(orcamento).where(eq(orcamento.empresaId, empresaId));
+  await db.insert(orcamento).values({ empresaId, obraId, categoriaId: cat("Materiais de construção"), valorPrevistoCentavos: 1_000_000 });
+
+  const base = { empresaId, obraId, dataCompetencia: competencia } as const;
+  await db.insert(lancamento).values([
+    { ...base, tipo: "custo", categoriaId: cat("Materiais de construção"), valorCentavos: 250_000 },
+    { ...base, tipo: "custo", categoriaId: cat("Materiais de construção"), valorCentavos: 100_000, situacao: "a_realizar", dataVencimento: somarDias(hoje, 10) },
+    { ...base, tipo: "custo", categoriaId: cat("Mão de obra direta"), valorCentavos: 70_000, situacao: "a_realizar", dataVencimento: somarDias(hoje, 50), isPrevisao: true },
+    { ...base, tipo: "receita", categoriaId: cat("Medições e vendas"), valorCentavos: 800_000 },
+    { ...base, tipo: "receita", categoriaId: cat("Medições e vendas"), valorCentavos: 300_000, situacao: "a_realizar", dataVencimento: somarDias(hoje, 40) },
+    { ...base, tipo: "receita", categoriaId: cat("Medições e vendas"), valorCentavos: 500_000, classe: "aporte" },
+  ]);
+}
+
+/**
  * Prepara o banco para o e2e: migrations + usuários, empresas e obras fixas. Idempotente, então
  * pode rodar repetidas vezes no banco develop sem acumular lixo.
  */
@@ -62,7 +91,7 @@ export default async function globalSetup() {
   await runMigrations(url);
 
   const db = getDb();
-  for (const e of [E2E.empresa, E2E.outraEmpresa]) {
+  for (const e of [E2E.empresa, E2E.outraEmpresa, E2E.painel]) {
     await db
       .insert(organization)
       .values({ id: e.id, name: e.nome, slug: e.slug, createdAt: new Date() })
@@ -72,16 +101,19 @@ export default async function globalSetup() {
   await limparResiduos();
 
   // A empresa fixa precisa de categorias para os testes de lançamento.
-  await db
-    .insert(categoria)
-    .values(CATEGORIAS_PADRAO.map((c) => ({ empresaId: E2E.empresa.id, ...c })))
-    .onConflictDoNothing();
+  for (const empresaId of [E2E.empresa.id, E2E.painel.id]) {
+    await db
+      .insert(categoria)
+      .values(CATEGORIAS_PADRAO.map((c) => ({ empresaId, ...c })))
+      .onConflictDoNothing();
+  }
 
   const obraIds: Record<string, string> = {};
   for (const [empresaId, o] of [
     [E2E.empresa.id, E2E.obras.a1],
     [E2E.empresa.id, E2E.obras.a2],
     [E2E.outraEmpresa.id, E2E.obras.b1],
+    [E2E.painel.id, E2E.painel.obra],
   ] as const) {
     await db.insert(obra).values({ empresaId, codigo: o.codigo, nome: o.nome, status: "ativa" }).onConflictDoNothing();
     const [linha] = await db
@@ -90,6 +122,8 @@ export default async function globalSetup() {
       .where(and(eq(obra.empresaId, empresaId), eq(obra.codigo, o.codigo)));
     obraIds[o.codigo] = linha!.id;
   }
+
+  await semearPainel(obraIds[E2E.painel.obra.codigo]!);
 
   for (const u of [E2E.admin, E2E.empresaUser, E2E.clienteUser, E2E.semVinculo]) {
     const { id } = await upsertUsuarioCredencial({

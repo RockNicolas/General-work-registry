@@ -13,6 +13,13 @@ export function formatBRL(centavos: Centavos): string {
   return brl.format(centavos / 100);
 }
 
+const brlCompacto = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: 1 });
+
+/** Para eixos de gráfico: 123456789 (centavos) → "R$ 1,2 mi". Aceita não inteiros (o eixo pode interpolar). */
+export function formatBRLCompact(centavos: number): string {
+  return brlCompacto.format(centavos / 100);
+}
+
 const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Sem símbolo, para campos de entrada: 123456 → "1.234,56". */

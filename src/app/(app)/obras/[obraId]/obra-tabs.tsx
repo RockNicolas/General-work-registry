@@ -37,6 +37,13 @@ export function ObraTabs({ obraId }: { obraId: string }) {
           </Link>
         );
       })}
+      {/* Os indicadores desta obra vivem no painel, já filtrados por ela. */}
+      <Link
+        href={`/dashboard?obra=${obraId}`}
+        className="ml-auto whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        Painel da obra →
+      </Link>
     </nav>
   );
 }

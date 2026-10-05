@@ -87,6 +87,13 @@ O Next 16 não tem mais `next lint`: o lint é `eslint` direto.
 - Webhook (`/api/webhooks/[erp]/[integracaoId]`): `Authorization: Bearer` comparado por hash em tempo constante; 401 idêntico para id inexistente, ERP errado e segredo errado; corpo nunca é confiado, só dispara sincronização incremental.
 - Testes: unitários com o Sienge falso (`src/test/fake-sienge.ts`, servidor HTTP com os formatos dos OpenAPI); integração com Postgres e pg-boss reais (`sync`, `service`, `fila`); e2e contra o Sienge falso (o Playwright liga `ERP_ALLOW_CUSTOM_BASE_URL=true` só para o servidor dele). Nunca testar contra o Sienge real.
 
+**Dashboards (Fase 6)**
+- `src/features/dashboards/`: `filtros.ts` (Zod da URL; valor inválido é descartado; padrão = 12 meses até o mês de hoje, máximo 60), `periodo.ts` (meses/datas como texto, "hoje" em Brasília), `calculos.ts` e `faixas.ts` (puros e testados: razões em bps, top+"Demais", faixas de vencimento), `queries.ts` (`carregarDashboard`: tudo numa só transação `withScope`, consultas sequenciais).
+- Definições (também em `calculos.ts`): só `classe = operacional` entra em custo/receita/margem; incorrido = custo pago; comprometido = pago + a pagar; orçado = orçamento `vigente`; desvio = comprometido − orçado. Período (`de`–`ate`, por competência) vale para KPIs, evolução e distribuições; orçado × comprometido, grupos e avanço são acumulados até o fim de `ate`; vencimentos ignoram o período. Isso é dito na tela: manter coerente ao mudar.
+- Isolamento: além do RLS, toda consulta repete `visivelPorObra`/`visivelObra` e aplica empresa/obra da URL (que o usuário não enxerga = nenhuma linha). `queries.int.test.ts` confere números calculados à mão e o isolamento de cada perfil. Agregações novas precisam do mesmo teste.
+- Gráficos: shadcn `chart` (Recharts 3) com paleta própria `--chart-1..7` em `globals.css` (claro e escuro). Componentes de gráfico são client e recebem dados prontos da página (server); filtros por GET. Valores em centavos até a borda (`formatBRL`, `formatBRLCompact`). TanStack Query não é usado aqui: a página é server-rendered e os filtros recarregam por URL.
+- `compararAvanco` usa como linha de base a MENOR versão planejada (planilha = 0, Sienge = 1).
+
 **Validação e erros**
 - Toda entrada externa (formulário, planilha, webhook, ERP) passa por Zod antes de tocar o banco.
 - Variáveis de ambiente só via `getEnv()` (`src/server/env.ts`); novas variáveis entram no schema Zod **e** no `.env.example`.
