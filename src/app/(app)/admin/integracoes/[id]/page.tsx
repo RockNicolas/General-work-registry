@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { requireAdmin } from "@/features/auth/session";
+import { requirePode } from "@/features/auth/session";
 import { listarEmpresas } from "@/features/empresas/service";
 import { AGENDAMENTOS } from "@/features/integracoes/config";
 import { ExecucoesCard } from "@/features/integracoes/components/execucoes-card";
@@ -21,7 +21,7 @@ export const metadata = { title: "Integração — RGO" };
 
 export default async function IntegracaoPage({ params }: PageProps<"/admin/integracoes/[id]">) {
   const { id } = await params;
-  const ctx = await requireAdmin();
+  const ctx = await requirePode("ver", "integracao");
   const d = await obterIntegracao(ctx, id);
   if (!d) notFound();
   const [empresas, obras] = await Promise.all([listarEmpresas(ctx), listarObras(ctx)]);

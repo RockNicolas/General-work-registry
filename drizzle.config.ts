@@ -4,7 +4,7 @@ import { defineConfig } from "drizzle-kit";
 try {
   process.loadEnvFile();
 } catch {
-  // sem .env: usa o ambiente do processo (CI, Docker)
+  // sem .env: usa o ambiente do processo (CI)
 }
 
 export default defineConfig({

@@ -2,10 +2,10 @@
 
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { type ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { CATEGORIA_GRUPO_LABEL } from "@/lib/domain";
 import { formatBRLCompact } from "@/lib/money";
 import { formatBps } from "@/lib/percent";
 import type { LinhaGrupo } from "../queries";
+import { rotuloGrupo } from "../rotulos";
 import { tooltipBRL } from "./formatadores";
 
 const config = {
@@ -13,8 +13,6 @@ const config = {
   comprometido: { label: "Comprometido", color: "var(--chart-1)" },
   incorrido: { label: "Incorrido (pago)", color: "var(--chart-2)" },
 } satisfies ChartConfig;
-
-export const rotuloGrupo = (g: LinhaGrupo["grupo"]) => (g === "sem_categoria" ? "Sem categoria" : CATEGORIA_GRUPO_LABEL[g]);
 
 /** Orçado × comprometido × incorrido por grupo de custo (materiais, M&E, MOD/MOI...), com o % comprometido. */
 export function GruposChart({ grupos }: { grupos: LinhaGrupo[] }) {

@@ -1,10 +1,10 @@
-import { asc, count, eq, like } from "drizzle-orm";
+import { asc, eq, like, sql } from "drizzle-orm";
 import { registrarAuditoria } from "@/features/auditoria/registrar";
 import type { AppContext } from "@/features/auth/context";
 import { ActionError } from "@/lib/action-result";
 import { limparCnpj } from "@/lib/cnpj";
 import { slugify } from "@/lib/slug";
-import { obra, organization } from "@/server/db/schema";
+import { organization } from "@/server/db/schema";
 import { withScope } from "@/server/db/scope";
 import type { EmpresaInput } from "./schema";
 
@@ -18,6 +18,29 @@ export type EmpresaRow = {
   totalObras: number;
 };
 
+/** Empresa visível para o usuário com este slug, ou null (inexistente ou de outra empresa). */
+export async function buscarEmpresaPorSlug(ctx: AppContext, slug: string): Promise<EmpresaRow | null> {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return null;
+  return withScope(ctx, async (tx) => {
+    const [e] = await tx
+      .select({
+        id: organization.id,
+        nome: organization.name,
+        slug: organization.slug,
+        razaoSocial: organization.razaoSocial,
+        cnpj: organization.cnpj,
+        ativo: organization.ativo,
+        totalObras: sql<number>`(select count(*)::int from "obra" where "obra"."empresa_id" = "organization"."id")`,
+      })
+      .from(organization)
+      .where(eq(organization.slug, slug));
+    if (!e) return null;
+    if (!ctx.isAdmin && !ctx.membroEmpresaIds.includes(e.id)) return null;
+    if (e.ativo === false && !ctx.isAdmin) return null;
+    return { ...e, ativo: e.ativo !== false, totalObras: Number(e.totalObras) };
+  });
+}
+
 export async function listarEmpresas(ctx: AppContext): Promise<EmpresaRow[]> {
   return withScope(ctx, async (tx) => {
     const empresas = await tx
@@ -28,20 +51,15 @@ export async function listarEmpresas(ctx: AppContext): Promise<EmpresaRow[]> {
         razaoSocial: organization.razaoSocial,
         cnpj: organization.cnpj,
         ativo: organization.ativo,
+        totalObras: sql<number>`(select count(*)::int from "obra" where "obra"."empresa_id" = "organization"."id")`,
       })
       .from(organization)
       .orderBy(asc(organization.name));
 
-    const contagens = await tx
-      .select({ empresaId: obra.empresaId, total: count() })
-      .from(obra)
-      .groupBy(obra.empresaId);
-    const porEmpresa = new Map(contagens.map((c) => [c.empresaId, c.total]));
-
     return empresas.map((e) => ({
       ...e,
       ativo: e.ativo !== false,
-      totalObras: porEmpresa.get(e.id) ?? 0,
+      totalObras: Number(e.totalObras),
     }));
   });
 }

@@ -4,9 +4,11 @@ import { NativeSelect } from "@/components/form/native-select";
 import { PaginationLinks } from "@/components/pagination-links";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { can } from "@/features/auth/policies";
 import { requireContext } from "@/features/auth/session";
 import { listarCategorias } from "@/features/categorias/service";
 import { listarEtapas } from "@/features/etapas/service";
+import { ExportarBotoes } from "@/features/exportacoes/components/exportar-botoes";
 import { LancamentoFormDialog } from "@/features/lancamentos/components/lancamento-form-dialog";
 import { LancamentosTable } from "@/features/lancamentos/components/lancamentos-table";
 import { filtrosLancamentoSchema } from "@/features/lancamentos/schema";
@@ -96,7 +98,15 @@ export default async function LancamentosPage({
           <strong className="text-foreground tabular-nums">{formatBRL(pagina.somaReceitaCentavos)}</strong>
           {filtrosAtivos && " (com os filtros aplicados)"}
         </p>
-        {ctx.isAdmin && <LancamentoFormDialog obraId={obra.id} etapas={opcoesEtapas} categorias={opcoesCategorias} />}
+        <div className="flex flex-wrap items-center gap-3">
+          {can(ctx, "exportar", "relatorio") && (
+            <ExportarBotoes
+              rota="/api/exportacoes/lancamentos"
+              params={{ obra: obra.id, tipo: filtros.tipo, situacao: filtros.situacao, classe: filtros.classe, de: filtros.de, ate: filtros.ate, q: filtros.q }}
+            />
+          )}
+          {ctx.isAdmin && <LancamentoFormDialog obraId={obra.id} etapas={opcoesEtapas} categorias={opcoesCategorias} />}
+        </div>
       </div>
 
       <LancamentosTable obraId={obra.id} rows={pagina.rows} etapas={opcoesEtapas} categorias={opcoesCategorias} isAdmin={ctx.isAdmin} />

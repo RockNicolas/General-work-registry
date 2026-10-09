@@ -10,7 +10,6 @@ Stack: Next.js 16 (App Router) · React 19 · TypeScript · PostgreSQL + Drizzle
 - Node.js 22+
 - pnpm (`npm install -g pnpm`)
 - Um Postgres 17+ em **UTF8**: o projeto usa o [Neon](https://neon.tech) (branch `develop` para dev e testes).
-  Docker é opcional (ver abaixo).
 
 ## Rodando localmente
 
@@ -49,15 +48,6 @@ O seed **recusa rodar em banco que tenha empresas reais** — use só no `develo
 Conferência: abra `http://localhost:3000/api/health` — deve responder `{"status":"ok","db":"up"}`.
 A primeira chamada depois de um tempo parado pode demorar alguns segundos (o Neon acorda).
 
-### Postgres local com Docker (opcional)
-
-```bash
-docker compose up -d db       # Postgres 17 em localhost:5432
-# DATABASE_URL=postgres://rgo:rgo@localhost:5432/rgo
-```
-
-Se a porta 5432 estiver ocupada: `DB_PORT=5433 docker compose up -d db` e use `localhost:5433` na URL.
-
 ### Worker (sincronização com ERPs)
 
 O pg-boss roda num processo separado do Next. **Sem ele, o botão "Sincronizar agora" só enfileira** (a execução fica "Na fila")
@@ -68,12 +58,6 @@ pnpm worker          # lê o .env; em produção: pnpm worker:prod com as variá
 ```
 
 Rode **um** worker por banco. Para o e2e (`pnpm test:e2e`) não precisa de worker, mas pare qualquer outro apontando para o mesmo banco.
-
-### Tudo em contêineres (opcional)
-
-```bash
-docker compose --profile app up --build
-```
 
 ## Importação de planilhas
 
@@ -100,6 +84,11 @@ Filtros por empresa, obra, grupo de custo e período ficam na URL (o link é com
 Regras: só lançamentos **operacionais** entram na margem; comprometido = pago + a pagar; o orçado é o orçamento **vigente**.
 Resultado, evolução e distribuições usam o período (por competência); orçado × comprometido, grupos e avanço são **acumulados até o mês final**;
 vencimentos olham a partir de hoje. A seção "Como os números são calculados" da própria tela repete isso.
+
+No topo da visão geral, **Exportar** baixa Excel ou PDF com os mesmos filtros da tela (os números do arquivo são os da página).
+Na lista de lançamentos de uma obra, os mesmos botões baixam essa lista filtrada: o Excel traz todas as colunas (até 50.000 linhas);
+o PDF é o relatório para ler e imprimir (até 2.000 linhas — acima disso, refine os filtros ou use o Excel).
+Cada exportação fica na auditoria (quem, quando, formato e filtros). Um perfil só exporta o que já enxerga.
 
 ## Integração com o Sienge
 

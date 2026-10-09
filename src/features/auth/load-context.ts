@@ -18,16 +18,17 @@ export async function loadContext(userId: string): Promise<AppContext | null> {
     .limit(1);
   if (!u || u.banned) return null;
 
-  const memberships = await db
-    .select({ organizationId: member.organizationId, role: member.role })
-    .from(member)
-    .innerJoin(organization, eq(organization.id, member.organizationId))
-    .where(and(eq(member.userId, userId), or(isNull(organization.ativo), eq(organization.ativo, true))));
-
-  const acessos = await db
-    .select({ obraId: obraAcesso.obraId, empresaId: obraAcesso.empresaId })
-    .from(obraAcesso)
-    .where(eq(obraAcesso.usuarioId, userId));
+  const [memberships, acessos] = await Promise.all([
+    db
+      .select({ organizationId: member.organizationId, role: member.role })
+      .from(member)
+      .innerJoin(organization, eq(organization.id, member.organizationId))
+      .where(and(eq(member.userId, userId), or(isNull(organization.ativo), eq(organization.ativo, true)))),
+    db
+      .select({ obraId: obraAcesso.obraId, empresaId: obraAcesso.empresaId })
+      .from(obraAcesso)
+      .where(eq(obraAcesso.usuarioId, userId)),
+  ]);
 
   return buildContext({ user: u, memberships, acessos });
 }

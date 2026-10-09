@@ -42,12 +42,9 @@ export type PaginaLancamentos = {
 /** Escapa % e _ para o usuário buscar o texto literal. */
 const likeSeguro = (t: string) => `%${t.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
-export async function listarLancamentos(
-  ctx: AppContext,
-  obraId: string,
-  filtros: FiltrosLancamento,
-): Promise<PaginaLancamentos> {
-  const condicoes = [
+/** Filtros da listagem (a mesma regra para a tela e para a exportação): visibilidade + obra + filtros da URL. */
+function condicoesDeLancamentos(ctx: AppContext, obraId: string, filtros: FiltrosLancamento) {
+  return and(
     eq(lancamento.obraId, obraId),
     visivelPorObra(ctx, { empresaId: lancamento.empresaId, obraId: lancamento.obraId }),
     filtros.tipo ? eq(lancamento.tipo, filtros.tipo) : undefined,
@@ -62,8 +59,39 @@ export async function listarLancamentos(
           ilike(lancamento.documento, likeSeguro(filtros.q)),
         )
       : undefined,
-  ];
-  const where = and(...condicoes);
+  );
+}
+
+const colunasDeLinha = {
+  id: lancamento.id,
+  tipo: lancamento.tipo,
+  situacao: lancamento.situacao,
+  classe: lancamento.classe,
+  isPrevisao: lancamento.isPrevisao,
+  valorCentavos: lancamento.valorCentavos,
+  dataCompetencia: lancamento.dataCompetencia,
+  dataVencimento: lancamento.dataVencimento,
+  dataLiquidacao: lancamento.dataLiquidacao,
+  categoriaId: lancamento.categoriaId,
+  categoriaNome: categoria.nome,
+  etapaId: lancamento.etapaId,
+  etapaCodigo: etapa.codigo,
+  etapaNome: etapa.nome,
+  contraparte: lancamento.contraparte,
+  documento: lancamento.documento,
+  descricao: lancamento.descricao,
+  origem: lancamento.origem,
+};
+
+type LinhaBruta = { etapaCodigo: string | null; etapaNome: string | null } & Omit<LancamentoRow, "etapaLabel">;
+const paraRow = ({ etapaCodigo, etapaNome, ...r }: LinhaBruta): LancamentoRow => ({ ...r, etapaLabel: etapaCodigo ? `${etapaCodigo} — ${etapaNome}` : null });
+
+export async function listarLancamentos(
+  ctx: AppContext,
+  obraId: string,
+  filtros: FiltrosLancamento,
+): Promise<PaginaLancamentos> {
+  const where = condicoesDeLancamentos(ctx, obraId, filtros);
 
   return withScope(ctx, async (tx) => {
     const [agregado] = await tx
@@ -80,26 +108,7 @@ export async function listarLancamentos(
     const pagina = Math.min(filtros.pagina, totalPaginas);
 
     const rows = await tx
-      .select({
-        id: lancamento.id,
-        tipo: lancamento.tipo,
-        situacao: lancamento.situacao,
-        classe: lancamento.classe,
-        isPrevisao: lancamento.isPrevisao,
-        valorCentavos: lancamento.valorCentavos,
-        dataCompetencia: lancamento.dataCompetencia,
-        dataVencimento: lancamento.dataVencimento,
-        dataLiquidacao: lancamento.dataLiquidacao,
-        categoriaId: lancamento.categoriaId,
-        categoriaNome: categoria.nome,
-        etapaId: lancamento.etapaId,
-        etapaCodigo: etapa.codigo,
-        etapaNome: etapa.nome,
-        contraparte: lancamento.contraparte,
-        documento: lancamento.documento,
-        descricao: lancamento.descricao,
-        origem: lancamento.origem,
-      })
+      .select(colunasDeLinha)
       .from(lancamento)
       .innerJoin(categoria, eq(categoria.id, lancamento.categoriaId))
       .leftJoin(etapa, eq(etapa.id, lancamento.etapaId))
@@ -109,16 +118,52 @@ export async function listarLancamentos(
       .offset((pagina - 1) * TAMANHO_PAGINA);
 
     return {
-      rows: rows.map(({ etapaCodigo, etapaNome, ...r }) => ({
-        ...r,
-        etapaLabel: etapaCodigo ? `${etapaCodigo} — ${etapaNome}` : null,
-      })),
+      rows: rows.map(paraRow),
       total,
       pagina,
       totalPaginas,
       somaCustoCentavos: Number(agregado?.custo ?? 0),
       somaReceitaCentavos: Number(agregado?.receita ?? 0),
     };
+  });
+}
+
+/** Teto do Excel: acima disso o usuário precisa refinar os filtros. */
+export const LIMITE_EXPORTACAO_LANCAMENTOS = 50_000;
+/** Teto do PDF (relatório para ler e imprimir). O conjunto maior vai no Excel. */
+export const LIMITE_EXPORTACAO_LANCAMENTOS_PDF = 2_000;
+
+export type LancamentosParaExportar = { rows: LancamentoRow[]; total: number; excedeLimite: boolean; somaCustoCentavos: number; somaReceitaCentavos: number };
+
+/** Todos os lançamentos que a listagem mostraria (mesmos filtros, sem paginar), até o teto. */
+export async function listarLancamentosParaExportar(
+  ctx: AppContext,
+  obraId: string,
+  filtros: FiltrosLancamento,
+  limite: number = LIMITE_EXPORTACAO_LANCAMENTOS,
+): Promise<LancamentosParaExportar> {
+  const where = condicoesDeLancamentos(ctx, obraId, filtros);
+  return withScope(ctx, async (tx) => {
+    const [agregado] = await tx
+      .select({
+        total: count(),
+        custo: sql<string>`coalesce(sum(${lancamento.valorCentavos}) filter (where ${lancamento.tipo} = 'custo'), 0)::bigint`,
+        receita: sql<string>`coalesce(sum(${lancamento.valorCentavos}) filter (where ${lancamento.tipo} = 'receita'), 0)::bigint`,
+      })
+      .from(lancamento)
+      .where(where);
+    const total = agregado?.total ?? 0;
+    const resumo = { total, somaCustoCentavos: Number(agregado?.custo ?? 0), somaReceitaCentavos: Number(agregado?.receita ?? 0) };
+    if (total > limite) return { ...resumo, rows: [], excedeLimite: true };
+
+    const rows = await tx
+      .select(colunasDeLinha)
+      .from(lancamento)
+      .innerJoin(categoria, eq(categoria.id, lancamento.categoriaId))
+      .leftJoin(etapa, eq(etapa.id, lancamento.etapaId))
+      .where(where)
+      .orderBy(desc(lancamento.dataCompetencia), desc(lancamento.createdAt), desc(lancamento.id));
+    return { ...resumo, rows: rows.map(paraRow), excedeLimite: false };
   });
 }
 

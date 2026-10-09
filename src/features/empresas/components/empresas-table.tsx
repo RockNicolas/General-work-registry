@@ -1,14 +1,29 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 import { DataTable } from "@/components/data-table";
+import { urlDaEmpresa } from "@/features/empresas/url";
 import { Badge } from "@/components/ui/badge";
 import { formatarCnpj } from "@/lib/cnpj";
 import type { EmpresaRow } from "../service";
 import { EmpresaFormDialog } from "./empresa-form-dialog";
 
 const columns: ColumnDef<EmpresaRow>[] = [
-  { accessorKey: "nome", header: "Empresa", cell: ({ row }) => <span className="font-medium">{row.original.nome}</span> },
+  {
+    accessorKey: "nome",
+    header: "Empresa",
+    cell: ({ row }) => (
+      <Link href={urlDaEmpresa(row.original.slug)} className="font-medium underline-offset-4 hover:underline">
+        {row.original.nome}
+      </Link>
+    ),
+  },
+  {
+    accessorKey: "slug",
+    header: "Endereço",
+    cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{urlDaEmpresa(row.original.slug)}</span>,
+  },
   { accessorKey: "razaoSocial", header: "Razão social", cell: ({ row }) => row.original.razaoSocial ?? "—" },
   {
     accessorKey: "cnpj",

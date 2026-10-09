@@ -31,7 +31,10 @@ test.describe("isolamento entre perfis (pela interface)", () => {
       await expect(page.getByRole("link", { name: o.nome })).toBeVisible();
     }
     await expect(page.getByRole("button", { name: "Nova obra" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Usuários" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Obras", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Clientes" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Categorias" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Empresas" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Auditoria" })).toBeVisible();
   });
 
@@ -45,8 +48,13 @@ test.describe("isolamento entre perfis (pela interface)", () => {
     await expect(page.getByRole("link", { name: E2E.obras.b1.nome })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Nova obra" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /Excluir/ })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Usuários" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Obras", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Clientes" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Categorias" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Empresas" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Análises" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Importar Excel" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Integração" })).toBeVisible();
 
     // Obra de outra empresa por URL direta: não existe para este usuário.
     await page.goto(caminhos.b1);
@@ -62,7 +70,7 @@ test.describe("isolamento entre perfis (pela interface)", () => {
 
   test("áreas de administração dão 404 para quem não é administrador", async ({ page }) => {
     await entrar(page, E2E.empresaUser.email);
-    for (const rota of ["/admin/empresas", "/admin/usuarios", "/admin/categorias", "/admin/auditoria", "/admin/integracoes", `/admin/integracoes/${E2E.integracao.id}`]) {
+    for (const rota of ["/admin/empresas", "/admin/usuarios", "/admin/clientes", "/admin/categorias", "/admin/auditoria"]) {
       const resposta = await page.goto(rota);
       expect(resposta?.status(), rota).toBe(404);
     }
@@ -73,6 +81,9 @@ test.describe("isolamento entre perfis (pela interface)", () => {
     await entrar(page, E2E.clienteUser.email);
 
     await page.goto("/obras");
+    await expect(page.getByRole("link", { name: "Obras", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Importar Excel" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Integração" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: E2E.obras.a1.nome })).toBeVisible();
     await expect(page.getByRole("link", { name: E2E.obras.a2.nome })).toHaveCount(0);
     await expect(page.getByRole("link", { name: E2E.obras.b1.nome })).toHaveCount(0);

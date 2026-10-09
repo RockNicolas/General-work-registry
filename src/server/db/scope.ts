@@ -45,12 +45,13 @@ export async function withScope<T>(
   const obraIds = joinIds(scope.obraIds);
 
   return db.transaction(async (tx) => {
+    // Um só round-trip: o banco está longe (cada ida custa ~170 ms). set_config('role') equivale a SET LOCAL ROLE.
     await tx.execute(sql`select
       set_config('app.is_admin', ${scope.isAdmin ? "true" : "false"}, true),
       set_config('app.empresa_ids', ${empresaIds}, true),
       set_config('app.membro_empresa_ids', ${membroEmpresaIds}, true),
-      set_config('app.obra_ids', ${obraIds}, true)`);
-    await tx.execute(sql`set local role rgo_app`);
+      set_config('app.obra_ids', ${obraIds}, true),
+      set_config('role', 'rgo_app', true)`);
     return fn(tx);
   });
 }

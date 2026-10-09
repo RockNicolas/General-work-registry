@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { registrarAuditoria } from "@/features/auditoria/registrar";
 import type { AppContext } from "@/features/auth/context";
+import { podeOperarEmpresa } from "@/features/auth/policies";
 import { ActionError } from "@/lib/action-result";
 import type { Erp, IntegracaoStatus, SyncGatilho, SyncStatus } from "@/lib/domain";
 import { getDb } from "@/server/db/client";
@@ -188,6 +189,10 @@ export async function criarIntegracao(ctx: AppContext, input: CriarIntegracaoInp
   const id = crypto.randomUUID();
   const credenciais = criptografar(JSON.stringify({ usuario: input.usuario, senha: input.senha }), `integracao:${id}`);
   const cron = cronDe(input.agendamento);
+
+  if (!podeOperarEmpresa(ctx, input.empresaId)) {
+    throw new ActionError("Empresa não encontrada.", { empresaId: "Empresa inválida" });
+  }
 
   await withScope(ctx, async (tx) => {
     const [empresa] = await tx.select({ id: organization.id }).from(organization).where(eq(organization.id, input.empresaId));

@@ -1,7 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { can } from "@/features/auth/policies";
 import { requireContext } from "@/features/auth/session";
+import { listarEmpresas } from "@/features/empresas/service";
+import { urlDaEmpresa } from "@/features/empresas/url";
 import { AvancoCurva, AvancoTabela } from "@/features/dashboards/components/avanco-chart";
 import { EvolucaoChart } from "@/features/dashboards/components/evolucao-chart";
 import { FiltrosForm } from "@/features/dashboards/components/filtros-form";
@@ -11,22 +15,39 @@ import { ObrasComparativoTable } from "@/features/dashboards/components/obras-ta
 import { RankingChart } from "@/features/dashboards/components/ranking-chart";
 import { Secao } from "@/features/dashboards/components/secoes";
 import { VencimentosChart } from "@/features/dashboards/components/vencimentos-chart";
-import { resolverFiltros } from "@/features/dashboards/filtros";
+import { filtrosParaParams, resolverFiltros } from "@/features/dashboards/filtros";
 import { hojeEmSaoPaulo, rotuloMes } from "@/features/dashboards/periodo";
 import { carregarDashboard, opcoesDeFiltro } from "@/features/dashboards/queries";
+import { ExportarBotoes } from "@/features/exportacoes/components/exportar-botoes";
 import { LANCAMENTO_CLASSE_LABEL } from "@/lib/domain";
 import { formatBRL } from "@/lib/money";
 
-export const metadata = { title: "Visão geral — RGO" };
+export const metadata = { title: "Análises — RGO" };
 
 const primeiro = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
-export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
+type EmpresaDaUrl = { id: string; nome: string; slug: string };
+
+export async function PainelAnalises({
+  searchParams,
+  empresa,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  /** Quando a página é a URL da empresa, os números ficam presos a ela. */
+  empresa?: EmpresaDaUrl;
+}) {
   const ctx = await requireContext();
   const bruto = await searchParams;
   const hoje = hojeEmSaoPaulo();
   const filtros = resolverFiltros(Object.fromEntries(Object.entries(bruto).map(([k, v]) => [k, primeiro(v)])), hoje);
-  const [d, opcoes] = await Promise.all([carregarDashboard(ctx, filtros, hoje), opcoesDeFiltro(ctx)]);
+  if (empresa) filtros.empresaId = empresa.id;
+  const [d, opcoesBrutas] = await Promise.all([carregarDashboard(ctx, filtros, hoje), opcoesDeFiltro(ctx)]);
+  const opcoes = empresa
+    ? {
+        empresas: opcoesBrutas.empresas.filter((e) => e.id === empresa.id),
+        obras: opcoesBrutas.obras.filter((o) => o.empresaId === empresa.id),
+      }
+    : opcoesBrutas;
 
   const periodo = filtros.de === filtros.ate ? rotuloMes(filtros.de) : `${rotuloMes(filtros.de)} a ${rotuloMes(filtros.ate)}`;
   const ate = rotuloMes(filtros.ate);
@@ -35,11 +56,16 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   return (
     <>
       <PageHeader
-        title="Visão geral"
-        description={`Olá, ${primeiroNome}. Custo, receita e margem das obras que você acompanha. Resultado de ${periodo}; acumulados até ${ate}.`}
+        title="Análises"
+        description={
+          empresa
+            ? `${empresa.nome}. Endereço /e/${empresa.slug}. Resultado de ${periodo}; acumulados até ${ate}.`
+            : `Olá, ${primeiroNome}. Custo, receita e margem das obras que você acompanha. Resultado de ${periodo}; acumulados até ${ate}.`
+        }
+        actions={can(ctx, "exportar", "relatorio") && opcoes.obras.length > 0 ? <ExportarBotoes rota="/api/exportacoes/painel" params={filtrosParaParams(filtros)} /> : undefined}
       />
 
-      <FiltrosForm filtros={filtros} opcoes={opcoes} />
+      <FiltrosForm filtros={filtros} opcoes={opcoes} action={empresa ? urlDaEmpresa(empresa.slug) : "/dashboard"} />
 
       {opcoes.obras.length === 0 ? (
         <Alert>
@@ -47,7 +73,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           <AlertDescription>
             {ctx.isAdmin ? (
               <>
-                Cadastre uma obra em <Link href="/obras" className="underline underline-offset-4">Obras</Link> e importe ou sincronize os dados para ver os indicadores.
+                Cadastre uma obra em <Link href={empresa ? urlDaEmpresa(empresa.slug, "obras") : "/obras"} className="underline underline-offset-4">Obras</Link> e importe ou sincronize os dados para ver os indicadores.
               </>
             ) : (
               "Quando houver obras liberadas para você, os indicadores aparecem aqui."
@@ -137,4 +163,13 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
       )}
     </>
   );
+}
+
+export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
+  const ctx = await requireContext();
+  if (!ctx.isAdmin) {
+    const minhas = (await listarEmpresas(ctx)).filter((e) => e.ativo);
+    if (minhas.length === 1) redirect(urlDaEmpresa(minhas[0]!.slug));
+  }
+  return <PainelAnalises searchParams={searchParams} />;
 }

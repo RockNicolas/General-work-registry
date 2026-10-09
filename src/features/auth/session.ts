@@ -5,12 +5,33 @@ import { cache } from "react";
 import { getAuth } from "@/server/auth";
 import type { AppContext } from "./context";
 import { loadContext } from "./load-context";
+import { can, type Action, type Resource } from "./policies";
 
-/** Contexto do usuário logado, ou null. Memoizado por requisição. */
+/** O banco fica nos EUA: repetir sessão + vínculos em todo clique custa cerca de 1 s. Vale por alguns segundos. */
+const CONTEXTO_MS = 20_000;
+const contextoPorToken = new Map<string, { ate: number; ctx: AppContext | null }>();
+
+function tokenDaSessao(cookie: string | null): string | null {
+  if (!cookie) return null;
+  const m = /(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=([^;]+)/.exec(cookie);
+  return m?.[1] ?? null;
+}
+
+/** Contexto do usuário logado, ou null. Memoizado por requisição e, por pouco tempo, entre cliques. */
 export const getContextOrNull = cache(async (): Promise<AppContext | null> => {
-  const session = await getAuth().api.getSession({ headers: await headers() });
+  const h = await headers();
+  const token = tokenDaSessao(h.get("cookie"));
+  const agora = Date.now();
+  if (token) {
+    const hit = contextoPorToken.get(token);
+    if (hit && hit.ate > agora) return hit.ctx;
+  }
+
+  const session = await getAuth().api.getSession({ headers: h });
   if (!session) return null;
-  return loadContext(session.user.id);
+  const ctx = await loadContext(session.user.id);
+  if (token) contextoPorToken.set(token, { ate: agora + CONTEXTO_MS, ctx });
+  return ctx;
 });
 
 /** Para páginas e Server Actions que exigem login. Sem sessão válida, vai para /login. */
@@ -24,6 +45,13 @@ export async function requireContext(): Promise<AppContext> {
 export async function requireAdmin(): Promise<AppContext> {
   const ctx = await requireContext();
   if (!ctx.isAdmin) notFound();
+  return ctx;
+}
+
+/** Para telas que um perfil não-admin também abre (importação, integração). Sem permissão, 404. */
+export async function requirePode(action: Action, resource: Resource): Promise<AppContext> {
+  const ctx = await requireContext();
+  if (!can(ctx, action, resource)) notFound();
   return ctx;
 }
 

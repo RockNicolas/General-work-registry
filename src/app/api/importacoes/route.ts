@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { getAdminContextOrNull } from "@/features/auth/session";
+import { can } from "@/features/auth/policies";
+import { getContextOrNull } from "@/features/auth/session";
 import { LIMITE_BYTES } from "@/features/importacoes/ler-arquivo";
 import { DATASETS } from "@/features/importacoes/modelo";
 import { criarPrevia } from "@/features/importacoes/service";
@@ -15,8 +16,8 @@ const erro = (mensagem: string, status: number, fieldErrors?: Record<string, str
  * negócio aqui: a gravação só acontece quando o administrador confirma a prévia.
  */
 export async function POST(request: Request) {
-  const ctx = await getAdminContextOrNull();
-  if (!ctx) return erro("Sem permissão para esta operação. Entre novamente.", 403);
+  const ctx = await getContextOrNull();
+  if (!ctx || !can(ctx, "importar", "importacao")) return erro("Sem permissão para esta operação. Entre novamente.", 403);
 
   // Recusa cedo, sem ler o corpo, o que já declara ser grande demais (folga p/ o multipart).
   const declarado = Number(request.headers.get("content-length") ?? 0);

@@ -12,7 +12,7 @@ test.describe("painel de indicadores", () => {
   test("administrador: números do período, tabela por obra, grupos, vencimentos e gráficos", async ({ page }) => {
     await entrar(page, E2E.admin.email);
     await page.goto(URL_PAINEL);
-    await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Análises" })).toBeVisible();
 
     // KPIs (só operacional: o aporte de R$ 5.000 não é receita).
     await expect(cartao(page, "Receita realizada")).toContainText("R$ 8.000,00");
@@ -86,7 +86,7 @@ test.describe("painel de indicadores", () => {
     await entrar(page, E2E.admin.email);
     const r = await page.goto("/dashboard?de=lixo&ate=2026-99&obra=nao-e-uuid&grupo=inexistente&empresa=");
     expect(r?.status()).toBe(200);
-    await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Análises" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Aplicar" })).toBeVisible();
   });
 
@@ -117,6 +117,6 @@ test.describe("painel de indicadores", () => {
     await expect(page.getByRole("heading", { name: new RegExp(E2E.obras.a1.nome) })).toBeVisible();
     await page.getByRole("link", { name: /Painel da obra/ }).click();
     await expect(page).toHaveURL(/\/dashboard\?obra=[0-9a-f-]{36}$/);
-    await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Análises" })).toBeVisible();
   });
 });

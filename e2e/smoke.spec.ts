@@ -33,7 +33,7 @@ test.describe("autenticação", () => {
   test("administrador entra, vê o painel e sai", async ({ page }) => {
     await entrar(page, E2E.admin.email);
     await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Análises" })).toBeVisible();
     await expect(page.getByText(/Olá, Ana./)).toBeVisible();
 
     await page.getByRole("button", { name: "Menu do usuário" }).click();
@@ -66,19 +66,24 @@ test.describe("autenticação", () => {
 test.describe("perfis", () => {
   test("empresa vê o painel em modo leitura", async ({ page }) => {
     await entrar(page, E2E.empresaUser.email);
-    await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Análises" })).toBeVisible();
     await expect(page.getByText(/Olá, Eva./)).toBeVisible();
     // Em modo leitura: o painel e as obras da própria empresa, sem a administração.
     await expect(page.getByRole("link", { name: new RegExp(E2E.obras.a1.codigo) })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Usuários" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Obras", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Clientes" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Categorias" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Importar Excel" })).toBeVisible();
   });
 
   test("cliente vê só o que foi liberado", async ({ page }) => {
     await entrar(page, E2E.clienteUser.email);
-    await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Análises" })).toBeVisible();
     await expect(page.getByText(/Olá, Caio./)).toBeVisible();
     await expect(page.getByRole("link", { name: new RegExp(E2E.obras.a1.codigo) })).toBeVisible();
     await expect(page.getByRole("link", { name: new RegExp(E2E.obras.a2.codigo) })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Importar Excel" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Integração" })).toHaveCount(0);
   });
 
   test("usuário sem vínculo cai na tela de sem acesso", async ({ page }) => {

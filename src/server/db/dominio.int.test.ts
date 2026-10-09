@@ -66,30 +66,51 @@ describe("RLS: lançamentos (ligados a obra)", () => {
     expect(await lancamentosVisiveis(fx.ctx.semVinculo)).toEqual([]);
   });
 
-  it("empresa e cliente não escrevem lançamentos", async () => {
-    for (const quem of ["empresaA", "clienteA"] as const) {
-      await falhaCom(
-        withScope(fx.ctx[quem], (tx) =>
-          tx.insert(lancamento).values({
-            empresaId: fx.ids.empresaA,
-            obraId: fx.obraId["A-1"],
-            categoriaId: fx.categoriaId.A,
-            tipo: "custo",
-            valorCentavos: 1,
-            dataCompetencia: "2026-02-01",
-          }),
-        ),
-        /row-level security/,
-      );
-    }
-    const alterados = await withScope(fx.ctx.empresaA, (tx) =>
+  it("cliente não escreve lançamentos", async () => {
+    await falhaCom(
+      withScope(fx.ctx.clienteA, (tx) =>
+        tx.insert(lancamento).values({
+          empresaId: fx.ids.empresaA,
+          obraId: fx.obraId["A-1"],
+          categoriaId: fx.categoriaId.A,
+          tipo: "custo",
+          valorCentavos: 1,
+          dataCompetencia: "2026-02-01",
+        }),
+      ),
+      /row-level security/,
+    );
+  });
+
+  it("empresa grava lançamento da própria obra e não o de outra empresa", async () => {
+    const [criado] = await withScope(fx.ctx.empresaA, (tx) =>
       tx
-        .update(lancamento)
-        .set({ valorCentavos: 1 })
-        .where(eq(lancamento.id, fx.lancamentoId["A-1"]))
+        .insert(lancamento)
+        .values({
+          empresaId: fx.ids.empresaA,
+          obraId: fx.obraId["A-1"],
+          categoriaId: fx.categoriaId.A,
+          tipo: "custo",
+          valorCentavos: 1,
+          dataCompetencia: "2026-02-01",
+        })
         .returning({ id: lancamento.id }),
     );
-    expect(alterados).toEqual([]);
+    expect(criado).toBeDefined();
+
+    await falhaCom(
+      withScope(fx.ctx.empresaA, (tx) =>
+        tx.insert(lancamento).values({
+          empresaId: fx.ids.empresaB,
+          obraId: fx.obraId["B-1"],
+          categoriaId: fx.categoriaId.B,
+          tipo: "custo",
+          valorCentavos: 1,
+          dataCompetencia: "2026-02-01",
+        }),
+      ),
+      /row-level security/,
+    );
   });
 });
 

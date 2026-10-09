@@ -16,11 +16,13 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import type { Perfil } from "@/features/auth/context";
-import { navFor } from "./nav";
+import { hrefNaEmpresa, navFor, slugNaUrl } from "./nav";
 
 export function AppSidebar({ perfil }: { perfil: Perfil }) {
   const pathname = usePathname();
+  const slug = slugNaUrl(pathname);
   const groups = navFor({ perfil });
+  const inicio = slug && perfil !== "admin" ? `/e/${slug}` : "/dashboard";
 
   return (
     <Sidebar collapsible="icon">
@@ -28,7 +30,7 @@ export function AppSidebar({ perfil }: { perfil: Perfil }) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard">
+              <Link href={inicio}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <Building2 className="size-4" />
                 </div>
@@ -48,11 +50,15 @@ export function AppSidebar({ perfil }: { perfil: Perfil }) {
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => {
-                  const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  const href = hrefNaEmpresa(item.href, slug);
+                  const active =
+                    slug && item.href === "/dashboard"
+                      ? pathname === `/e/${slug}`
+                      : pathname === href || pathname.startsWith(`${href}/`);
                   return (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
-                        <Link href={item.href}>
+                        <Link href={href}>
                           <item.icon />
                           <span>{item.title}</span>
                         </Link>

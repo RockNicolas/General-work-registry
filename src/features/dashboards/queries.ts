@@ -299,8 +299,8 @@ async function distribuicao(tx: Tx, ctx: AppContext, f: FiltrosDashboard, por: "
   );
 }
 
-async function avancoFisicoDasObras(tx: Tx, ctx: AppContext, f: FiltrosDashboard, obras: LinhaObra[]): Promise<AvancoObra[]> {
-  const linhas = await tx
+async function linhasDeAvanco(tx: Tx, ctx: AppContext, f: FiltrosDashboard) {
+  return tx
     .select({
       obraId: avancoFisico.obraId,
       competencia: avancoFisico.competencia,
@@ -318,7 +318,9 @@ async function avancoFisicoDasObras(tx: Tx, ctx: AppContext, f: FiltrosDashboard
         lte(avancoFisico.competencia, primeiroDiaDoMes(f.ate)),
       ),
     );
+}
 
+function montarAvanco(obras: LinhaObra[], linhas: Awaited<ReturnType<typeof linhasDeAvanco>>): AvancoObra[] {
   const porObra = new Map<string, typeof linhas>();
   for (const l of linhas) porObra.set(l.obraId, [...(porObra.get(l.obraId) ?? []), l]);
 
@@ -378,22 +380,39 @@ async function foraDaMargem(tx: Tx, ctx: AppContext, f: FiltrosDashboard): Promi
     .filter((l) => l.valor !== 0);
 }
 
-/** Tudo que o painel mostra, numa só transação (um instantâneo consistente e uma só conexão). */
+/**
+ * Tudo que o painel mostra. Cada consulta abre o próprio escopo e elas rodam juntas: no banco remoto,
+ * dez consultas em fila somam vários segundos; em paralelo o tempo é o da mais lenta.
+ */
 export async function carregarDashboard(ctx: AppContext, filtros: FiltrosDashboard, hoje: string): Promise<DashboardDados> {
-  return withScope(ctx, async (tx) => {
-    const kpisPeriodo = await kpisDoPeriodo(tx, ctx, filtros);
-    const contagem = await contarObras(tx, ctx, filtros);
-    const evolucao = await evolucaoMensal(tx, ctx, filtros);
-    const obras = await comparativoObras(tx, ctx, filtros);
-    const grupos = await gruposDeCusto(tx, ctx, filtros);
-    const categorias = await distribuicao(tx, ctx, filtros, "categoria");
-    const etapas = await distribuicao(tx, ctx, filtros, "etapa");
-    const avanco = await avancoFisicoDasObras(tx, ctx, filtros, obras);
-    const { aPagar, aReceber } = await vencimentos(tx, ctx, filtros, hoje);
-    const fora = await foraDaMargem(tx, ctx, filtros);
+  const buscar = <T>(fn: (tx: Tx) => Promise<T>) => withScope(ctx, fn);
+  const [kpisPeriodo, contagem, evolucao, obras, grupos, categorias, etapas, linhasAvanco, venc, fora] = await Promise.all([
+    buscar((tx) => kpisDoPeriodo(tx, ctx, filtros)),
+    buscar((tx) => contarObras(tx, ctx, filtros)),
+    buscar((tx) => evolucaoMensal(tx, ctx, filtros)),
+    buscar((tx) => comparativoObras(tx, ctx, filtros)),
+    buscar((tx) => gruposDeCusto(tx, ctx, filtros)),
+    buscar((tx) => distribuicao(tx, ctx, filtros, "categoria")),
+    buscar((tx) => distribuicao(tx, ctx, filtros, "etapa")),
+    buscar((tx) => linhasDeAvanco(tx, ctx, filtros)),
+    buscar((tx) => vencimentos(tx, ctx, filtros, hoje)),
+    buscar((tx) => foraDaMargem(tx, ctx, filtros)),
+  ]);
 
-    return { filtros, hoje, kpis: { ...kpisPeriodo, ...contagem }, evolucao, obras, grupos, categorias, etapas, avanco, aPagar, aReceber, foraDaMargem: fora };
-  });
+  return {
+    filtros,
+    hoje,
+    kpis: { ...kpisPeriodo, ...contagem },
+    evolucao,
+    obras,
+    grupos,
+    categorias,
+    etapas,
+    avanco: montarAvanco(obras, linhasAvanco),
+    aPagar: venc.aPagar,
+    aReceber: venc.aReceber,
+    foraDaMargem: fora,
+  };
 }
 
 /** Opções dos filtros: só as obras (e, por elas, as empresas) que o usuário enxerga. */

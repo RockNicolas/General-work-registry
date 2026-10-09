@@ -50,6 +50,20 @@
       "when": 1791150744454,
       "tag": "0006_importacao_usuario_nome",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791161262430,
+      "tag": "0007_auditoria_exportacao",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791162000000,
+      "tag": "0008_empresa_importa_integra",
+      "breakpoints": true
     }
   ]
 }

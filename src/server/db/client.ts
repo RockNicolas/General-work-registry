@@ -15,7 +15,7 @@ export function getPool(): Pool {
   if (!globalForDb.__rgoPool) {
     const pool = new Pool({
       connectionString: getEnv().DATABASE_URL,
-      max: 10,
+      max: 16,
       // Folga para o Neon acordar do auto-suspend na primeira conexão.
       connectionTimeoutMillis: 10_000,
     });

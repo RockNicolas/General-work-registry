@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import type { ActionResult } from "@/lib/action-result";
-import { adminAction } from "@/server/actions";
+import { permissaoAction } from "@/server/actions";
 import { agendarIntegracao } from "./fila";
 import { atualizarIntegracaoSchema, criarIntegracaoSchema, criarObrasDoErpSchema, vinculosSchema } from "./schema";
 import {
@@ -34,7 +34,7 @@ async function agendarSemFalhar(id: string, cron: string | null) {
 }
 
 export async function criarIntegracaoAction(input: unknown): Promise<ActionResult<{ id: string }>> {
-  return adminAction(
+  return permissaoAction({ action: "criar", resource: "integracao" },
     criarIntegracaoSchema,
     input,
     async (ctx, d) => {
@@ -47,7 +47,7 @@ export async function criarIntegracaoAction(input: unknown): Promise<ActionResul
 }
 
 export async function atualizarIntegracaoAction(id: string, input: unknown): Promise<ActionResult> {
-  return adminAction(
+  return permissaoAction({ action: "editar", resource: "integracao" },
     z.object({ id: z.uuid(), dados: atualizarIntegracaoSchema }),
     { id, dados: input },
     async (ctx, d) => {
@@ -59,7 +59,7 @@ export async function atualizarIntegracaoAction(id: string, input: unknown): Pro
 }
 
 export async function excluirIntegracaoAction(id: string): Promise<ActionResult> {
-  return adminAction(
+  return permissaoAction({ action: "excluir", resource: "integracao" },
     schemaId,
     { id },
     async (ctx, d) => {
@@ -71,16 +71,16 @@ export async function excluirIntegracaoAction(id: string): Promise<ActionResult>
 }
 
 export async function testarConexaoAction(id: string): Promise<ActionResult<{ ok: boolean; mensagem: string }>> {
-  return adminAction(schemaId, { id }, (ctx, d) => testarConexaoIntegracao(ctx, d.id), { revalidate: aoDetalhe(id) });
+  return permissaoAction({ action: "editar", resource: "integracao" },schemaId, { id }, (ctx, d) => testarConexaoIntegracao(ctx, d.id), { revalidate: aoDetalhe(id) });
 }
 
 export async function listarObrasDoErpAction(id: string): Promise<ActionResult<ObraDoErp[]>> {
-  return adminAction(schemaId, { id }, (ctx, d) => listarObrasDoErp(ctx, d.id));
+  return permissaoAction({ action: "editar", resource: "integracao" },schemaId, { id }, (ctx, d) => listarObrasDoErp(ctx, d.id));
 }
 
 export async function salvarVinculosAction(input: unknown): Promise<ActionResult> {
   const id = (input as { integracaoId?: string } | null)?.integracaoId ?? "";
-  return adminAction(
+  return permissaoAction({ action: "editar", resource: "integracao" },
     vinculosSchema,
     input,
     async (ctx, d) => {
@@ -92,21 +92,21 @@ export async function salvarVinculosAction(input: unknown): Promise<ActionResult
 
 export async function criarObrasDoErpAction(input: unknown): Promise<ActionResult<{ criadas: number }>> {
   const id = (input as { integracaoId?: string } | null)?.integracaoId ?? "";
-  return adminAction(criarObrasDoErpSchema, input, (ctx, d) => criarObrasDoErp(ctx, d.integracaoId, d.obras), { revalidate: [...aoDetalhe(id), "/obras"] });
+  return permissaoAction({ action: "editar", resource: "integracao" },criarObrasDoErpSchema, input, (ctx, d) => criarObrasDoErp(ctx, d.integracaoId, d.obras), { revalidate: [...aoDetalhe(id), "/obras"] });
 }
 
 export async function sincronizarAction(id: string, tipo: "incremental" | "historica"): Promise<ActionResult<{ sincronizacaoId: string }>> {
-  return adminAction(z.object({ id: z.uuid(), tipo: z.enum(["incremental", "historica"]) }), { id, tipo }, (ctx, d) => solicitarSincronizacao(ctx, d.id, d.tipo), {
+  return permissaoAction({ action: "sincronizar", resource: "integracao" }, z.object({ id: z.uuid(), tipo: z.enum(["incremental", "historica"]) }), { id, tipo }, (ctx, d) => solicitarSincronizacao(ctx, d.id, d.tipo), {
     revalidate: aoDetalhe(id),
   });
 }
 
 export async function gerarSegredoWebhookAction(id: string): Promise<ActionResult<{ segredo: string; url: string }>> {
-  return adminAction(schemaId, { id }, (ctx, d) => gerarSegredoDoWebhook(ctx, d.id), { revalidate: aoDetalhe(id) });
+  return permissaoAction({ action: "editar", resource: "integracao" },schemaId, { id }, (ctx, d) => gerarSegredoDoWebhook(ctx, d.id), { revalidate: aoDetalhe(id) });
 }
 
 export async function desativarWebhookAction(id: string): Promise<ActionResult> {
-  return adminAction(
+  return permissaoAction({ action: "editar", resource: "integracao" },
     schemaId,
     { id },
     async (ctx, d) => {
@@ -117,7 +117,7 @@ export async function desativarWebhookAction(id: string): Promise<ActionResult> 
 }
 
 export async function registrarWebhookAction(id: string, eventos: string[]): Promise<ActionResult<{ url: string; hookId: string }>> {
-  return adminAction(
+  return permissaoAction({ action: "editar", resource: "integracao" },
     z.object({ id: z.uuid(), eventos: z.array(z.string().trim().min(1).max(80)).min(1, "Informe ao menos um evento").max(30) }),
     { id, eventos },
     (ctx, d) => registrarWebhookNoErp(ctx, d.id, d.eventos),

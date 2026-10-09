@@ -8,6 +8,8 @@ export type NavItem = {
   icon: LucideIcon;
   /** Recurso exigido para ver o item (matriz em features/auth/policies.ts). */
   resource: Resource;
+  /** Cadastro que só o administrador faz (obra, cliente, categoria). */
+  somenteAdmin?: boolean;
 };
 
 export type NavGroup = { label: string; items: NavItem[] };
@@ -15,28 +17,60 @@ export type NavGroup = { label: string; items: NavItem[] };
 // Cada fase acrescenta aqui as telas que entrega. Só aparece o que já existe.
 const NAV: NavGroup[] = [
   {
-    label: "Painel",
+    label: "Painel da empresa",
     items: [
-      { title: "Visão geral", href: "/dashboard", icon: LayoutDashboard, resource: "dashboard" },
-      { title: "Obras", href: "/obras", icon: HardHat, resource: "obra" },
+      { title: "Análises", href: "/dashboard", icon: LayoutDashboard, resource: "dashboard" },
+      { title: "Importar Excel", href: "/importacoes", icon: FileUp, resource: "importacao" },
+      { title: "Integração", href: "/admin/integracoes", icon: Plug, resource: "integracao" },
     ],
   },
   {
     label: "Administração",
     items: [
-      { title: "Empresas", href: "/admin/empresas", icon: Building2, resource: "empresa" },
-      { title: "Usuários", href: "/admin/usuarios", icon: Users, resource: "usuario" },
-      { title: "Categorias", href: "/admin/categorias", icon: Tags, resource: "empresa" },
-      { title: "Importações", href: "/importacoes", icon: FileUp, resource: "importacao" },
-      { title: "Integrações", href: "/admin/integracoes", icon: Plug, resource: "integracao" },
-      { title: "Auditoria", href: "/admin/auditoria", icon: History, resource: "auditoria" },
+      { title: "Empresas", href: "/admin/empresas", icon: Building2, resource: "empresa", somenteAdmin: true },
+      { title: "Clientes", href: "/admin/clientes", icon: Users, resource: "usuario", somenteAdmin: true },
+      { title: "Obras", href: "/obras", icon: HardHat, resource: "obra", somenteAdmin: true },
+      { title: "Categorias", href: "/admin/categorias", icon: Tags, resource: "empresa", somenteAdmin: true },
+      { title: "Auditoria", href: "/admin/auditoria", icon: History, resource: "auditoria", somenteAdmin: true },
     ],
   },
 ];
 
+/** Slug quando a URL é de uma empresa (`/e/construtora-aurora/...`). */
+export function slugNaUrl(pathname: string): string | null {
+  const m = /^\/e\/([^/]+)/.exec(pathname);
+  return m?.[1] ?? null;
+}
+
+/** Dentro da URL da empresa, análises/obras/planilha/integração apontam para ela. */
+export function hrefNaEmpresa(href: string, slug: string | null): string {
+  if (!slug) return href;
+  if (href === "/dashboard") return `/e/${slug}`;
+  if (href === "/obras") return `/e/${slug}/obras`;
+  if (href === "/importacoes") return `/e/${slug}/importacoes`;
+  if (href === "/admin/integracoes") return `/e/${slug}/integracao`;
+  return href;
+}
+
+/** Título do item de menu da rota, para a tela de carregamento. */
+export function tituloDaRota(pathname: string): string {
+  const slug = slugNaUrl(pathname);
+  const path = slug ? pathname.slice(`/e/${slug}`.length) || "/" : pathname;
+  if (slug && (path === "/" || path === "")) return "Análises";
+  if (slug && (path === "/obras" || path.startsWith("/obras/"))) return "Obras";
+  if (slug && path.startsWith("/importacoes")) return "Importar Excel";
+  if (slug && path.startsWith("/integracao")) return "Integração";
+  const item = NAV.flatMap((g) => g.items).find((i) => pathname === i.href || pathname.startsWith(`${i.href}/`));
+  return item?.title ?? "Carregando";
+}
+
 /** Itens que o perfil pode ver; grupos vazios somem. */
 export function navFor(ctx: Pick<AppContext, "perfil">): NavGroup[] {
-  return NAV.map((g) => ({ ...g, items: g.items.filter((i) => can(ctx, "ver", i.resource)) })).filter(
-    (g) => g.items.length > 0,
-  );
+  return NAV.map((g) => ({
+    ...g,
+    items: g.items.filter((i) => {
+      if (i.somenteAdmin && ctx.perfil !== "admin") return false;
+      return can(ctx, "ver", i.resource);
+    }),
+  })).filter((g) => g.items.length > 0);
 }

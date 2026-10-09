@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { registrarAuditoria } from "@/features/auditoria/registrar";
 import type { AppContext } from "@/features/auth/context";
+import { podeOperarEmpresa } from "@/features/auth/policies";
 import { ActionError } from "@/lib/action-result";
 import { upsertAvanco } from "@/features/avanco/upsert";
 import { CONTAGEM_ZERO, type ContagemConjunto, somarContagens, upsertLancamentos } from "@/features/lancamentos/upsert";
@@ -209,6 +210,10 @@ export async function criarPrevia(
 ): Promise<{ id: string }> {
   const arquivo = lerArquivo(entrada.bytes, entrada.arquivoNome, entrada.datasetCsv);
   const hash = createHash("sha256").update(entrada.bytes).digest("hex");
+
+  if (!podeOperarEmpresa(ctx, entrada.empresaId)) {
+    throw new ActionError("Empresa não encontrada.", { empresaId: "Empresa inválida" });
+  }
 
   return withScope(ctx, async (tx) => {
     const [empresa] = await tx.select({ id: organization.id }).from(organization).where(eq(organization.id, entrada.empresaId));

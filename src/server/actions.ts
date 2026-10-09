@@ -2,7 +2,8 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import type { z } from "zod";
 import type { AppContext } from "@/features/auth/context";
-import { getAdminContextOrNull } from "@/features/auth/session";
+import { can, type Action, type Resource } from "@/features/auth/policies";
+import { getAdminContextOrNull, getContextOrNull } from "@/features/auth/session";
 import { ActionError, type ActionResult, fail, failFromZod, ok } from "@/lib/action-result";
 import { friendlyDbError } from "@/server/db/errors";
 
@@ -16,9 +17,24 @@ export function failFromError(error: unknown): ActionResult<never> {
 }
 
 /**
- * Molde das Server Actions do Administrador: exige admin, valida a entrada com Zod, executa,
- * invalida as páginas e converte qualquer falha em ActionResult (nada vaza para o cliente).
+ * Molde das Server Actions: valida a entrada com Zod, executa, invalida as páginas e converte
+ * qualquer falha em ActionResult (nada vaza para o cliente).
  */
+/** Para uma permissão da matriz (ex.: a empresa importa a própria planilha). */
+export async function permissaoAction<S extends z.ZodType, O>(
+  permissao: { action: Action; resource: Resource },
+  schema: S,
+  input: unknown,
+  run: (ctx: AppContext, data: z.output<S>) => Promise<O>,
+  opts: { revalidate?: string[] } = {},
+): Promise<ActionResult<O>> {
+  const ctx = await getContextOrNull();
+  if (!ctx || !can(ctx, permissao.action, permissao.resource)) {
+    return fail("Sem permissão para esta operação. Entre novamente.");
+  }
+  return executar(schema, input, ctx, run, opts);
+}
+
 export async function adminAction<S extends z.ZodType, O>(
   schema: S,
   input: unknown,
@@ -27,6 +43,16 @@ export async function adminAction<S extends z.ZodType, O>(
 ): Promise<ActionResult<O>> {
   const ctx = await getAdminContextOrNull();
   if (!ctx) return fail("Sem permissão para esta operação. Entre novamente.");
+  return executar(schema, input, ctx, run, opts);
+}
+
+async function executar<S extends z.ZodType, O>(
+  schema: S,
+  input: unknown,
+  ctx: AppContext,
+  run: (ctx: AppContext, data: z.output<S>) => Promise<O>,
+  opts: { revalidate?: string[] },
+): Promise<ActionResult<O>> {
 
   const parsed = schema.safeParse(input);
   if (!parsed.success) return failFromZod(parsed.error);

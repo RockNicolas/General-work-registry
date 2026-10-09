@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { getAdminContextOrNull } from "@/features/auth/session";
+import { can } from "@/features/auth/policies";
+import { getContextOrNull } from "@/features/auth/session";
 import { gerarModeloCsv, gerarModeloXlsx } from "@/features/importacoes/gerar-modelo";
 import { DATASETS, MODELO } from "@/features/importacoes/modelo";
 
@@ -12,8 +13,8 @@ const consulta = z.object({
 
 /** Download do modelo vazio: .xlsx completo ou .csv de um conjunto de dados. */
 export async function GET(request: Request) {
-  const ctx = await getAdminContextOrNull();
-  if (!ctx) return Response.json({ error: "Sem permissão." }, { status: 403 });
+  const ctx = await getContextOrNull();
+  if (!ctx || !can(ctx, "ver", "importacao")) return Response.json({ error: "Sem permissão." }, { status: 403 });
 
   const params = consulta.safeParse(Object.fromEntries(new URL(request.url).searchParams));
   if (!params.success) return Response.json({ error: "Parâmetros inválidos." }, { status: 400 });

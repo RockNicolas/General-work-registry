@@ -194,7 +194,7 @@ export default async function globalSetup() {
 
   // Aquece as rotas (compilação do dev server) para os testes não pagarem esse custo em paralelo.
   const base = "http://localhost:3000";
-  for (const rota of ["/login", "/dashboard", "/obras", "/admin/empresas", "/admin/integracoes", "/api/auth/get-session", "/api/health"]) {
+  for (const rota of ["/login", "/dashboard", "/obras", "/admin/empresas", "/admin/integracoes", "/admin/auditoria", "/api/auth/get-session", "/api/health", "/api/exportacoes/painel", "/api/exportacoes/lancamentos"]) {
     await fetch(base + rota, { redirect: "manual" }).catch(() => undefined);
   }
 

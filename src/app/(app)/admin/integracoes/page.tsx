@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/page-header";
-import { requireAdmin } from "@/features/auth/session";
+import { requirePode } from "@/features/auth/session";
 import { listarEmpresas } from "@/features/empresas/service";
 import { IntegracaoFormDialog } from "@/features/integracoes/components/integracao-form-dialog";
 import { IntegracoesTable } from "@/features/integracoes/components/integracoes-table";
@@ -8,7 +8,7 @@ import { listarIntegracoes } from "@/features/integracoes/service";
 export const metadata = { title: "Integrações — RGO" };
 
 export default async function IntegracoesPage() {
-  const ctx = await requireAdmin();
+  const ctx = await requirePode("ver", "integracao");
   const [integracoes, empresas] = await Promise.all([listarIntegracoes(ctx), listarEmpresas(ctx)]);
 
   return (

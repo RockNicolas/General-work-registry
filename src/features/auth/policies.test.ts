@@ -20,28 +20,30 @@ describe("can", () => {
     for (const a of ACTIONS) for (const r of RESOURCES) expect(can({ perfil: "admin" }, a, r)).toBe(true);
   });
 
-  it.each(["empresa", "cliente"] as const)("%s nunca escreve nem gerencia", (perfil) => {
-    for (const r of RESOURCES) {
-      for (const a of ["criar", "editar", "excluir", "importar", "sincronizar"] as Action[]) {
-        expect(can({ perfil }, a, r), `${perfil} ${a} ${r}`).toBe(false);
-      }
-    }
+  it("empresa analisa, importa Excel e integra; não governa", () => {
+    expect(can({ perfil: "empresa" }, "ver", "dashboard")).toBe(true);
+    expect(can({ perfil: "empresa" }, "ver", "importacao")).toBe(true);
+    expect(can({ perfil: "empresa" }, "importar", "importacao")).toBe(true);
+    expect(can({ perfil: "empresa" }, "ver", "integracao")).toBe(true);
+    expect(can({ perfil: "empresa" }, "sincronizar", "integracao")).toBe(true);
+    expect(can({ perfil: "empresa" }, "criar", "integracao")).toBe(true);
+    expect(can({ perfil: "empresa" }, "ver", "empresa")).toBe(false);
+    expect(can({ perfil: "empresa" }, "ver", "usuario")).toBe(false);
+    expect(can({ perfil: "empresa" }, "ver", "auditoria")).toBe(false);
+    expect(can({ perfil: "empresa" }, "criar", "obra")).toBe(false);
+    expect(can({ perfil: "empresa" }, "importar", "lancamento")).toBe(false);
   });
 
-  it.each(["empresa", "cliente"] as const)("%s só enxerga o que é de leitura", (perfil) => {
-    expect(can({ perfil }, "ver", "dashboard")).toBe(true);
-    expect(can({ perfil }, "ver", "obra")).toBe(true);
-    expect(can({ perfil }, "ver", "lancamento")).toBe(true);
-    expect(can({ perfil }, "ver", "orcamento")).toBe(true);
-    expect(can({ perfil }, "ver", "relatorio")).toBe(true);
-    expect(can({ perfil }, "exportar", "relatorio")).toBe(true);
-
-    expect(can({ perfil }, "ver", "usuario")).toBe(false);
-    expect(can({ perfil }, "ver", "empresa")).toBe(false);
-    expect(can({ perfil }, "ver", "importacao")).toBe(false);
-    expect(can({ perfil }, "ver", "integracao")).toBe(false);
-    expect(can({ perfil }, "ver", "auditoria")).toBe(false);
-    expect(can({ perfil }, "exportar", "lancamento")).toBe(false);
+  it("cliente só lê as análises", () => {
+    expect(can({ perfil: "cliente" }, "ver", "dashboard")).toBe(true);
+    expect(can({ perfil: "cliente" }, "ver", "obra")).toBe(true);
+    expect(can({ perfil: "cliente" }, "exportar", "relatorio")).toBe(true);
+    expect(can({ perfil: "cliente" }, "ver", "importacao")).toBe(false);
+    expect(can({ perfil: "cliente" }, "importar", "importacao")).toBe(false);
+    expect(can({ perfil: "cliente" }, "ver", "integracao")).toBe(false);
+    expect(can({ perfil: "cliente" }, "sincronizar", "integracao")).toBe(false);
+    expect(can({ perfil: "cliente" }, "ver", "usuario")).toBe(false);
+    expect(can({ perfil: "cliente" }, "criar", "obra")).toBe(false);
   });
 
   it("sem_acesso não pode nada", () => {

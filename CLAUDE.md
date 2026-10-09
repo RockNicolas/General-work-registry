@@ -94,6 +94,10 @@ O Next 16 não tem mais `next lint`: o lint é `eslint` direto.
 - Gráficos: shadcn `chart` (Recharts 3) com paleta própria `--chart-1..7` em `globals.css` (claro e escuro). Componentes de gráfico são client e recebem dados prontos da página (server); filtros por GET. Valores em centavos até a borda (`formatBRL`, `formatBRLCompact`). TanStack Query não é usado aqui: a página é server-rendered e os filtros recarregam por URL.
 - `compararAvanco` usa como linha de base a MENOR versão planejada (planilha = 0, Sienge = 1).
 
+**Exportação (Fase 7)**
+- `src/features/exportacoes/`: o arquivo é gerado no Route Handler (`/api/exportacoes/painel` e `/api/exportacoes/lancamentos`) com os mesmos filtros da tela. Excel (ExcelJS) é a planilha de trabalho; PDF (React-PDF, Helvetica/WinAnsi — sem "−", "→", "≥") é o relatório para ler. Lançamentos: até 50.000 linhas no Excel e 2.000 no PDF.
+- Qualquer perfil que pode ver o relatório pode exportar (`exportar` + `relatorio`). A auditoria (`acao = exportar`) é gravada DEPOIS de gerar o arquivo e ANTES de entregá-lo; Empresa/Cliente só registram em nome de empresa de que são membros (migration `0007`).
+
 **Validação e erros**
 - Toda entrada externa (formulário, planilha, webhook, ERP) passa por Zod antes de tocar o banco.
 - Variáveis de ambiente só via `getEnv()` (`src/server/env.ts`); novas variáveis entram no schema Zod **e** no `.env.example`.

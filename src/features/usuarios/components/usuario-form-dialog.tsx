@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import type { UsuarioRow } from "@/features/auth/usuarios-admin";
 import { atualizarUsuarioAction, criarUsuarioAction } from "../actions";
-import { type AtualizarUsuarioInput, atualizarUsuarioSchema, criarUsuarioSchema } from "../schema";
+import { type AtualizarUsuarioInput, type PapelVinculo, atualizarUsuarioSchema, criarUsuarioSchema } from "../schema";
 
 type FormValues = AtualizarUsuarioInput & { senha?: string };
 
@@ -40,6 +40,7 @@ function VinculoItem({
   empresas,
   obrasPorEmpresa,
   onRemove,
+  papelFixo,
 }: {
   index: number;
   form: UseFormReturn<FormValues>;
@@ -47,6 +48,7 @@ function VinculoItem({
   empresas: EmpresaOpcao[];
   obrasPorEmpresa: Record<string, ObraOpcao[]>;
   onRemove: () => void;
+  papelFixo?: PapelVinculo;
 }) {
   const empresaId = useWatch({ control, name: `vinculos.${index}.empresaId` });
   const papel = useWatch({ control, name: `vinculos.${index}.papel` });
@@ -55,7 +57,7 @@ function VinculoItem({
 
   return (
     <div className="grid gap-3 rounded-lg border p-3">
-      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <div className={`grid gap-3 sm:items-end ${papelFixo ? "sm:grid-cols-[1fr_auto]" : "sm:grid-cols-[1fr_1fr_auto]"}`}>
         <Field label="Empresa" htmlFor={`vinculo-${index}-empresa`} error={erro?.empresaId?.message}>
           <Controller
             control={control}
@@ -74,15 +76,17 @@ function VinculoItem({
             )}
           />
         </Field>
-        <Field label="Perfil" htmlFor={`vinculo-${index}-papel`}>
-          <Controller
-            control={control}
-            name={`vinculos.${index}.papel`}
-            render={({ field }) => (
-              <SelectField id={`vinculo-${index}-papel`} value={field.value} onChange={field.onChange} options={PAPEIS} />
-            )}
-          />
-        </Field>
+        {!papelFixo && (
+          <Field label="Perfil" htmlFor={`vinculo-${index}-papel`}>
+            <Controller
+              control={control}
+              name={`vinculos.${index}.papel`}
+              render={({ field }) => (
+                <SelectField id={`vinculo-${index}-papel`} value={field.value} onChange={field.onChange} options={PAPEIS} />
+              )}
+            />
+          </Field>
+        )}
         <Button type="button" variant="ghost" size="icon" aria-label="Remover empresa" onClick={onRemove}>
           <Trash2 />
         </Button>
@@ -129,24 +133,32 @@ export function UsuarioFormDialog({
   empresas,
   obrasPorEmpresa,
   meuId,
+  papelFixo,
 }: {
   usuario?: UsuarioRow;
   empresas: EmpresaOpcao[];
   obrasPorEmpresa: Record<string, ObraOpcao[]>;
   meuId: string;
+  /** Na governança, o cadastro nasce já como empresa ou como cliente. */
+  papelFixo?: PapelVinculo;
 }) {
   const editando = !!usuario;
+  const papelInicial: PapelVinculo = papelFixo ?? "empresa";
   const form = useForm<FormValues>({
     resolver: zodResolver(editando ? atualizarUsuarioSchema : criarUsuarioSchema) as Resolver<FormValues>,
     defaultValues: {
       nome: usuario?.nome ?? "",
       email: usuario?.email ?? "",
       senha: "",
-      admin: usuario?.admin ?? false,
+      admin: papelFixo ? false : (usuario?.admin ?? false),
       ativo: usuario?.ativo ?? true,
       vinculos:
-        usuario?.vinculos.map((v) => ({ empresaId: v.empresaId, papel: v.papel, obraIds: v.obraIds })) ??
-        (empresas.length === 1 ? [{ empresaId: empresas[0]!.id, papel: "empresa" as const, obraIds: [] }] : []),
+        usuario?.vinculos.map((v) => ({
+          empresaId: v.empresaId,
+          papel: papelFixo ?? v.papel,
+          obraIds: v.obraIds,
+        })) ??
+        [{ empresaId: empresas.length === 1 ? empresas[0]!.id : "", papel: papelInicial, obraIds: [] }],
     },
   });
   const { register, control, formState } = form;
@@ -158,9 +170,15 @@ export function UsuarioFormDialog({
   return (
     <FormDialog
       form={form}
-      title={editando ? "Editar usuário" : "Novo usuário"}
-      description="Administrador enxerga tudo. Empresa e Cliente têm acesso somente leitura."
-      successMessage={editando ? "Usuário atualizado." : "Usuário criado."}
+      title={editando ? "Editar acesso" : papelFixo === "cliente" ? "Novo cliente" : papelFixo === "empresa" ? "Novo acesso da empresa" : "Novo usuário"}
+      description={
+        papelFixo === "cliente"
+          ? "O cliente entra no painel e vê só as obras liberadas, em modo leitura."
+          : papelFixo === "empresa"
+            ? "Este acesso entra nas análises da empresa e pode importar Excel e usar a integração."
+            : "Administrador enxerga tudo. Empresa analisa, importa e integra. Cliente só lê as obras liberadas."
+      }
+      successMessage={editando ? "Acesso atualizado." : "Acesso criado."}
       action={(values) => {
         const { senha, ...dados } = values;
         return editando ? atualizarUsuarioAction(usuario.id, dados) : criarUsuarioAction({ ...dados, senha });
@@ -174,7 +192,7 @@ export function UsuarioFormDialog({
         ) : (
           <Button>
             <Plus />
-            Novo usuário
+            {papelFixo === "cliente" ? "Novo cliente" : papelFixo === "empresa" ? "Novo acesso" : "Novo usuário"}
           </Button>
         )
       }
@@ -199,6 +217,7 @@ export function UsuarioFormDialog({
         </Field>
       )}
 
+      {!papelFixo && (
       <Controller
         control={control}
         name="admin"
@@ -214,8 +233,9 @@ export function UsuarioFormDialog({
           </div>
         )}
       />
+      )}
 
-      {!admin && (
+      {(papelFixo || !admin) && (
         <div className="grid gap-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Empresas e acesso</span>
@@ -223,7 +243,7 @@ export function UsuarioFormDialog({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => append({ empresaId: "", papel: "empresa", obraIds: [] })}
+              onClick={() => append({ empresaId: "", papel: papelFixo ?? "empresa", obraIds: [] })}
             >
               <Plus />
               Adicionar empresa
@@ -242,6 +262,7 @@ export function UsuarioFormDialog({
               control={control}
               empresas={empresas}
               obrasPorEmpresa={obrasPorEmpresa}
+              papelFixo={papelFixo}
               onRemove={() => remove(index)}
             />
           ))}

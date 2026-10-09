@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/page-header";
-import { requireAdmin } from "@/features/auth/session";
+import { requirePode } from "@/features/auth/session";
 import { listarEmpresas } from "@/features/empresas/service";
 import { ImportacoesTable } from "@/features/importacoes/components/importacoes-table";
 import { UploadForm } from "@/features/importacoes/components/upload-form";
@@ -8,7 +8,7 @@ import { listarImportacoes } from "@/features/importacoes/service";
 export const metadata = { title: "Importações — RGO" };
 
 export default async function ImportacoesPage() {
-  const ctx = await requireAdmin();
+  const ctx = await requirePode("ver", "importacao");
   const [importacoes, empresas] = await Promise.all([listarImportacoes(ctx), listarEmpresas(ctx)]);
 
   return (
