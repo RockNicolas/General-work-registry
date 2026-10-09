@@ -10,7 +10,7 @@ async function caminhosDasObras(browser: import("@playwright/test").Browser) {
   await page.getByLabel("E-mail").fill(E2E.admin.email);
   await page.getByLabel("Senha").fill(E2E.senha);
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/a(?:$|\?)/);
   await page.goto("http://localhost:3000/obras");
 
   const caminho = async (nome: string) => (await page.getByRole("link", { name: nome }).first().getAttribute("href"))!;
@@ -31,6 +31,7 @@ test.describe("isolamento entre perfis (pela interface)", () => {
       await expect(page.getByRole("link", { name: o.nome })).toBeVisible();
     }
     await expect(page.getByRole("button", { name: "Nova obra" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Administradores" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Obras", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Clientes" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Categorias" })).toBeVisible();
@@ -48,6 +49,7 @@ test.describe("isolamento entre perfis (pela interface)", () => {
     await expect(page.getByRole("link", { name: E2E.obras.b1.nome })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Nova obra" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /Excluir/ })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Administradores" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Obras", exact: true })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Clientes" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Categorias" })).toHaveCount(0);
@@ -70,7 +72,7 @@ test.describe("isolamento entre perfis (pela interface)", () => {
 
   test("áreas de administração dão 404 para quem não é administrador", async ({ page }) => {
     await entrar(page, E2E.empresaUser.email);
-    for (const rota of ["/admin/empresas", "/admin/usuarios", "/admin/clientes", "/admin/categorias", "/admin/auditoria"]) {
+    for (const rota of ["/a", "/admin/administradores", "/admin/empresas", "/admin/usuarios", "/admin/clientes", "/admin/categorias", "/admin/auditoria"]) {
       const resposta = await page.goto(rota);
       expect(resposta?.status(), rota).toBe(404);
     }

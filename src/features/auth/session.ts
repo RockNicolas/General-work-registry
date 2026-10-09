@@ -7,8 +7,8 @@ import type { AppContext } from "./context";
 import { loadContext } from "./load-context";
 import { can, type Action, type Resource } from "./policies";
 
-/** O banco fica nos EUA: repetir sessão + vínculos em todo clique custa cerca de 1 s. Vale por alguns segundos. */
-const CONTEXTO_MS = 20_000;
+/** O banco fica nos EUA: sessão + vínculos são algumas idas de ~100 ms. Vale por um minuto. */
+const CONTEXTO_MS = 60_000;
 const contextoPorToken = new Map<string, { ate: number; ctx: AppContext | null }>();
 
 function tokenDaSessao(cookie: string | null): string | null {

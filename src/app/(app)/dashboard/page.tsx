@@ -31,10 +31,16 @@ type EmpresaDaUrl = { id: string; nome: string; slug: string };
 export async function PainelAnalises({
   searchParams,
   empresa,
+  action,
+  secao,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
   /** Quando a página é a URL da empresa, os números ficam presos a ela. */
   empresa?: EmpresaDaUrl;
+  /** Caminho dos filtros. No endereço do administrador é /a. */
+  action?: string;
+  /** Dentro de /a o título fica abaixo do cabeçalho da administração. */
+  secao?: boolean;
 }) {
   const ctx = await requireContext();
   const bruto = await searchParams;
@@ -63,9 +69,10 @@ export async function PainelAnalises({
             : `Olá, ${primeiroNome}. Custo, receita e margem das obras que você acompanha. Resultado de ${periodo}; acumulados até ${ate}.`
         }
         actions={can(ctx, "exportar", "relatorio") && opcoes.obras.length > 0 ? <ExportarBotoes rota="/api/exportacoes/painel" params={filtrosParaParams(filtros)} /> : undefined}
+        heading={secao ? "h2" : "h1"}
       />
 
-      <FiltrosForm filtros={filtros} opcoes={opcoes} action={empresa ? urlDaEmpresa(empresa.slug) : "/dashboard"} />
+      <FiltrosForm filtros={filtros} opcoes={opcoes} action={empresa ? urlDaEmpresa(empresa.slug) : (action ?? "/dashboard")} />
 
       {opcoes.obras.length === 0 ? (
         <Alert>
@@ -167,9 +174,17 @@ export async function PainelAnalises({
 
 export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   const ctx = await requireContext();
-  if (!ctx.isAdmin) {
-    const minhas = (await listarEmpresas(ctx)).filter((e) => e.ativo);
-    if (minhas.length === 1) redirect(urlDaEmpresa(minhas[0]!.slug));
+  if (ctx.isAdmin) {
+    const bruto = await searchParams;
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(bruto)) {
+      const valor = Array.isArray(v) ? v[0] : v;
+      if (valor) qs.set(k, valor);
+    }
+    const q = qs.toString();
+    redirect(q ? `/a?${q}` : "/a");
   }
+  const minhas = (await listarEmpresas(ctx)).filter((e) => e.ativo);
+  if (minhas.length === 1) redirect(urlDaEmpresa(minhas[0]!.slug));
   return <PainelAnalises searchParams={searchParams} />;
 }

@@ -11,11 +11,14 @@ import { ObraTabs } from "./obra-tabs";
 export default async function ObraLayout({ children, params }: LayoutProps<"/obras/[obraId]">) {
   const { obraId } = await params;
   const ctx = await requireContext();
-  const obra = await obterObra(ctx, obraId);
+  const [obra, empresasAdmin] = await Promise.all([
+    obterObra(ctx, obraId),
+    ctx.isAdmin ? listarEmpresas(ctx) : Promise.resolve(null),
+  ]);
   if (!obra) notFound();
 
-  const empresas = ctx.isAdmin
-    ? (await listarEmpresas(ctx)).map((e) => ({ id: e.id, nome: e.nome }))
+  const empresas = empresasAdmin
+    ? empresasAdmin.map((e) => ({ id: e.id, nome: e.nome }))
     : [{ id: obra.empresaId, nome: obra.empresaNome }];
 
   return (

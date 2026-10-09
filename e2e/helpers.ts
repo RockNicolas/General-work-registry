@@ -7,7 +7,7 @@ export async function entrar(page: Page, email: string, senha: string = E2E.senh
   await page.getByLabel("Senha").fill(senha);
   await page.getByRole("button", { name: "Entrar" }).click();
   // O primeiro login depois de subir o `next dev` paga a compilação das rotas: folga generosa.
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 40_000 });
+  await expect(page).toHaveURL(/\/(?:dashboard\b|a(?:$|\?)|e\/)/, { timeout: 40_000 });
 }
 
 /** Escolhe uma opção num Select do shadcn (Radix): abre o combobox pelo rótulo e clica na opção. */

@@ -22,7 +22,7 @@ export function AppSidebar({ perfil }: { perfil: Perfil }) {
   const pathname = usePathname();
   const slug = slugNaUrl(pathname);
   const groups = navFor({ perfil });
-  const inicio = slug && perfil !== "admin" ? `/e/${slug}` : "/dashboard";
+  const inicio = perfil === "admin" ? "/a" : slug ? `/e/${slug}` : "/dashboard";
 
   return (
     <Sidebar collapsible="icon">
@@ -51,8 +51,9 @@ export function AppSidebar({ perfil }: { perfil: Perfil }) {
               <SidebarMenu>
                 {group.items.map((item) => {
                   const href = hrefNaEmpresa(item.href, slug);
+                  const analise = item.href === "/dashboard" || item.href === "/a";
                   const active =
-                    slug && item.href === "/dashboard"
+                    slug && analise
                       ? pathname === `/e/${slug}`
                       : pathname === href || pathname.startsWith(`${href}/`);
                   return (

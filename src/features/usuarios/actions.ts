@@ -6,7 +6,7 @@ import type { ActionResult } from "@/lib/action-result";
 import { adminAction } from "@/server/actions";
 import { atualizarUsuarioSchema, criarUsuarioSchema, redefinirSenhaSchema } from "./schema";
 
-const REVALIDAR = ["/admin/usuarios"];
+const REVALIDAR = ["/admin/administradores", "/admin/empresas", "/admin/clientes", "/admin/usuarios"];
 
 export async function criarUsuarioAction(input: unknown): Promise<ActionResult<{ id: string }>> {
   return adminAction(criarUsuarioSchema, input, (ctx, data) => criarUsuario(ctx, data), { revalidate: REVALIDAR });

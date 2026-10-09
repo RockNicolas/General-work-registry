@@ -11,14 +11,13 @@ export const metadata = { title: "Orçamento — RGO" };
 export default async function OrcamentoPage({ params }: PageProps<"/obras/[obraId]/orcamento">) {
   const { obraId } = await params;
   const ctx = await requireContext();
-  const obra = await obterObra(ctx, obraId);
-  if (!obra) notFound();
-
-  const [itens, etapas, categorias] = await Promise.all([
-    listarOrcamento(ctx, obra.id),
-    listarEtapas(ctx, obra.id),
-    listarCategorias(ctx, obra.empresaId),
+  const [obra, itens, etapas] = await Promise.all([
+    obterObra(ctx, obraId),
+    listarOrcamento(ctx, obraId),
+    listarEtapas(ctx, obraId),
   ]);
+  if (!obra) notFound();
+  const categorias = await listarCategorias(ctx, obra.empresaId);
 
   return (
     <OrcamentoView

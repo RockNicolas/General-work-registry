@@ -10,9 +10,7 @@ export const metadata = { title: "Avanço físico — RGO" };
 export default async function AvancoPage({ params }: PageProps<"/obras/[obraId]/avanco">) {
   const { obraId } = await params;
   const ctx = await requireContext();
-  const obra = await obterObra(ctx, obraId);
+  const [obra, linhas] = await Promise.all([obterObra(ctx, obraId), listarAvanco(ctx, obraId)]);
   if (!obra) notFound();
-
-  const linhas = await listarAvanco(ctx, obra.id);
   return <AvancoView obraId={obra.id} linhas={linhas} comparativo={compararAvanco(linhas)} isAdmin={ctx.isAdmin} />;
 }

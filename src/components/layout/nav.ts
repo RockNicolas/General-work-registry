@@ -1,4 +1,4 @@
-import { Building2, FileUp, HardHat, History, LayoutDashboard, type LucideIcon, Plug, Tags, Users } from "lucide-react";
+import { Building2, FileUp, HardHat, History, LayoutDashboard, type LucideIcon, Plug, Shield, Tags, Users } from "lucide-react";
 import type { AppContext } from "@/features/auth/context";
 import { can, type Resource } from "@/features/auth/policies";
 
@@ -27,6 +27,7 @@ const NAV: NavGroup[] = [
   {
     label: "Administração",
     items: [
+      { title: "Administradores", href: "/admin/administradores", icon: Shield, resource: "usuario", somenteAdmin: true },
       { title: "Empresas", href: "/admin/empresas", icon: Building2, resource: "empresa", somenteAdmin: true },
       { title: "Clientes", href: "/admin/clientes", icon: Users, resource: "usuario", somenteAdmin: true },
       { title: "Obras", href: "/obras", icon: HardHat, resource: "obra", somenteAdmin: true },
@@ -45,7 +46,7 @@ export function slugNaUrl(pathname: string): string | null {
 /** Dentro da URL da empresa, análises/obras/planilha/integração apontam para ela. */
 export function hrefNaEmpresa(href: string, slug: string | null): string {
   if (!slug) return href;
-  if (href === "/dashboard") return `/e/${slug}`;
+  if (href === "/dashboard" || href === "/a") return `/e/${slug}`;
   if (href === "/obras") return `/e/${slug}/obras`;
   if (href === "/importacoes") return `/e/${slug}/importacoes`;
   if (href === "/admin/integracoes") return `/e/${slug}/integracao`;
@@ -56,6 +57,7 @@ export function hrefNaEmpresa(href: string, slug: string | null): string {
 export function tituloDaRota(pathname: string): string {
   const slug = slugNaUrl(pathname);
   const path = slug ? pathname.slice(`/e/${slug}`.length) || "/" : pathname;
+  if (pathname === "/a") return "Administração";
   if (slug && (path === "/" || path === "")) return "Análises";
   if (slug && (path === "/obras" || path.startsWith("/obras/"))) return "Obras";
   if (slug && path.startsWith("/importacoes")) return "Importar Excel";
@@ -68,9 +70,11 @@ export function tituloDaRota(pathname: string): string {
 export function navFor(ctx: Pick<AppContext, "perfil">): NavGroup[] {
   return NAV.map((g) => ({
     ...g,
-    items: g.items.filter((i) => {
-      if (i.somenteAdmin && ctx.perfil !== "admin") return false;
-      return can(ctx, "ver", i.resource);
-    }),
+    items: g.items
+      .filter((i) => {
+        if (i.somenteAdmin && ctx.perfil !== "admin") return false;
+        return can(ctx, "ver", i.resource);
+      })
+      .map((i) => (ctx.perfil === "admin" && i.href === "/dashboard" ? { ...i, href: "/a" } : i)),
   })).filter((g) => g.items.length > 0);
 }

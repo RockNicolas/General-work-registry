@@ -32,7 +32,8 @@ test.describe("autenticação", () => {
 
   test("administrador entra, vê o painel e sai", async ({ page }) => {
     await entrar(page, E2E.admin.email);
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/a$/);
+    await expect(page.getByRole("heading", { name: "Administração" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Análises" })).toBeVisible();
     await expect(page.getByText(/Olá, Ana./)).toBeVisible();
 
@@ -51,7 +52,7 @@ test.describe("autenticação", () => {
     await page.getByLabel("E-mail").fill(E2E.admin.email);
     await page.getByLabel("Senha").fill(E2E.senha);
     await page.getByRole("button", { name: "Entrar" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page).toHaveURL(/\/a$/);
   });
 
   test("não aceita redirecionamento para site externo (open redirect)", async ({ page }) => {
@@ -59,7 +60,7 @@ test.describe("autenticação", () => {
     await page.getByLabel("E-mail").fill(E2E.admin.email);
     await page.getByLabel("Senha").fill(E2E.senha);
     await page.getByRole("button", { name: "Entrar" }).click();
-    await expect(page).toHaveURL(/localhost:3000\/dashboard/);
+    await expect(page).toHaveURL(/localhost:3000\/a$/);
   });
 });
 
@@ -111,7 +112,7 @@ test.describe("segurança", () => {
 test("alterna o tema claro/escuro", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await entrar(page, E2E.admin.email);
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/a$/);
   const html = page.locator("html");
   await expect(html).not.toHaveClass(/dark/);
 

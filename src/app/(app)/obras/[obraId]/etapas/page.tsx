@@ -9,9 +9,8 @@ export const metadata = { title: "Etapas — RGO" };
 export default async function EtapasPage({ params }: PageProps<"/obras/[obraId]/etapas">) {
   const { obraId } = await params;
   const ctx = await requireContext();
-  const obra = await obterObra(ctx, obraId);
+  const [obra, etapas] = await Promise.all([obterObra(ctx, obraId), listarEtapas(ctx, obraId)]);
   if (!obra) notFound();
-  const etapas = await listarEtapas(ctx, obra.id);
 
   return <EtapasView obraId={obra.id} etapas={etapas} isAdmin={ctx.isAdmin} />;
 }

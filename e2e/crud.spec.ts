@@ -152,18 +152,16 @@ test.describe("usuários", () => {
     const hrefA2 = await page.getByRole("link", { name: E2E.obras.a2.nome }).getAttribute("href");
     expect(hrefA2).toMatch(/^\/obras\/[0-9a-f-]{36}$/);
 
-    await page.goto("/admin/usuarios");
-    await page.getByRole("button", { name: "Novo usuário" }).click();
+    await page.goto("/admin/clientes");
+    await page.getByRole("button", { name: "Novo cliente" }).click();
     await page.getByLabel("Nome", { exact: true }).fill("Cliente Criado");
     await page.getByLabel("E-mail", { exact: true }).fill(email);
     await page.getByLabel("Senha inicial").fill("SenhaInicial123");
-    await page.getByRole("button", { name: "Adicionar empresa" }).click();
     await escolher(page, "Empresa", E2E.empresa.nome);
-    await escolher(page, "Perfil", /Cliente/);
     await page.getByRole("checkbox").first().waitFor();
     await page.getByLabel(new RegExp(E2E.obras.a1.codigo)).check();
     await page.getByRole("button", { name: "Salvar" }).click();
-    await expect(page.getByText("Usuário criado.")).toBeVisible();
+    await expect(page.getByText("Acesso criado.")).toBeVisible();
     await expect(page.getByRole("cell", { name: email })).toBeVisible();
 
     // O novo cliente entra (contexto limpo, sem a sessão do admin).
@@ -173,7 +171,7 @@ test.describe("usuários", () => {
     await clientePage.getByLabel("E-mail", { exact: true }).fill(email);
     await clientePage.getByLabel("Senha").fill("SenhaInicial123");
     await clientePage.getByRole("button", { name: "Entrar" }).click();
-    await expect(clientePage).toHaveURL(/\/dashboard/);
+    await expect(clientePage).toHaveURL(/\/(dashboard|e\/)/);
 
     await clientePage.goto("http://localhost:3000/obras");
     await expect(clientePage.getByRole("link", { name: E2E.obras.a1.nome })).toBeVisible();
@@ -185,12 +183,11 @@ test.describe("usuários", () => {
 
   test("e-mail repetido mostra erro; administrador não pode se desativar", async ({ page }) => {
     await entrar(page, E2E.admin.email);
-    await page.goto("/admin/usuarios");
-    await page.getByRole("button", { name: "Novo usuário" }).click();
+    await page.goto("/admin/administradores");
+    await page.getByRole("button", { name: "Novo administrador" }).click();
     await page.getByLabel("Nome", { exact: true }).fill("Repetido");
     await page.getByLabel("E-mail", { exact: true }).fill(E2E.empresaUser.email);
     await page.getByLabel("Senha inicial").fill("SenhaInicial123");
-    await page.getByRole("switch", { name: "Administrador" }).click();
     await page.getByRole("button", { name: "Salvar" }).click();
     await expect(page.getByText("Este e-mail já está cadastrado.").first()).toBeVisible();
   });

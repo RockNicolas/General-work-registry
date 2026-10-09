@@ -134,6 +134,7 @@ export function UsuarioFormDialog({
   obrasPorEmpresa,
   meuId,
   papelFixo,
+  somenteAdmin,
 }: {
   usuario?: UsuarioRow;
   empresas: EmpresaOpcao[];
@@ -141,6 +142,8 @@ export function UsuarioFormDialog({
   meuId: string;
   /** Na governança, o cadastro nasce já como empresa ou como cliente. */
   papelFixo?: PapelVinculo;
+  /** Cadastro de outro administrador: acesso total, sem vínculo com empresa. */
+  somenteAdmin?: boolean;
 }) {
   const editando = !!usuario;
   const papelInicial: PapelVinculo = papelFixo ?? "empresa";
@@ -150,15 +153,15 @@ export function UsuarioFormDialog({
       nome: usuario?.nome ?? "",
       email: usuario?.email ?? "",
       senha: "",
-      admin: papelFixo ? false : (usuario?.admin ?? false),
+      admin: somenteAdmin ? true : papelFixo ? false : (usuario?.admin ?? false),
       ativo: usuario?.ativo ?? true,
-      vinculos:
-        usuario?.vinculos.map((v) => ({
-          empresaId: v.empresaId,
-          papel: papelFixo ?? v.papel,
-          obraIds: v.obraIds,
-        })) ??
-        [{ empresaId: empresas.length === 1 ? empresas[0]!.id : "", papel: papelInicial, obraIds: [] }],
+      vinculos: somenteAdmin
+        ? []
+        : (usuario?.vinculos.map((v) => ({
+            empresaId: v.empresaId,
+            papel: papelFixo ?? v.papel,
+            obraIds: v.obraIds,
+          })) ?? [{ empresaId: empresas.length === 1 ? empresas[0]!.id : "", papel: papelInicial, obraIds: [] }]),
     },
   });
   const { register, control, formState } = form;
@@ -170,18 +173,33 @@ export function UsuarioFormDialog({
   return (
     <FormDialog
       form={form}
-      title={editando ? "Editar acesso" : papelFixo === "cliente" ? "Novo cliente" : papelFixo === "empresa" ? "Novo acesso da empresa" : "Novo usuário"}
+      title={
+        editando
+          ? somenteAdmin
+            ? "Editar administrador"
+            : "Editar acesso"
+          : somenteAdmin
+            ? "Novo administrador"
+            : papelFixo === "cliente"
+              ? "Novo cliente"
+              : papelFixo === "empresa"
+                ? "Novo acesso da empresa"
+                : "Novo usuário"
+      }
       description={
-        papelFixo === "cliente"
-          ? "O cliente entra no painel e vê só as obras liberadas, em modo leitura."
-          : papelFixo === "empresa"
-            ? "Este acesso entra nas análises da empresa e pode importar Excel e usar a integração."
-            : "Administrador enxerga tudo. Empresa analisa, importa e integra. Cliente só lê as obras liberadas."
+        somenteAdmin
+          ? "Este acesso entra no painel da administração: cadastra empresas, clientes, obras e categorias."
+          : papelFixo === "cliente"
+            ? "O cliente entra no painel e vê só as obras liberadas, em modo leitura."
+            : papelFixo === "empresa"
+              ? "Este acesso entra nas análises da empresa e pode importar Excel e usar a integração."
+              : "Administrador enxerga tudo. Empresa analisa, importa e integra. Cliente só lê as obras liberadas."
       }
       successMessage={editando ? "Acesso atualizado." : "Acesso criado."}
       action={(values) => {
         const { senha, ...dados } = values;
-        return editando ? atualizarUsuarioAction(usuario.id, dados) : criarUsuarioAction({ ...dados, senha });
+        const payload = somenteAdmin ? { ...dados, admin: true, vinculos: [] } : dados;
+        return editando ? atualizarUsuarioAction(usuario.id, payload) : criarUsuarioAction({ ...payload, senha });
       }}
       onSuccess={() => !editando && form.reset()}
       trigger={
@@ -192,7 +210,7 @@ export function UsuarioFormDialog({
         ) : (
           <Button>
             <Plus />
-            {papelFixo === "cliente" ? "Novo cliente" : papelFixo === "empresa" ? "Novo acesso" : "Novo usuário"}
+            {somenteAdmin ? "Novo administrador" : papelFixo === "cliente" ? "Novo cliente" : papelFixo === "empresa" ? "Novo acesso" : "Novo usuário"}
           </Button>
         )
       }
@@ -217,7 +235,7 @@ export function UsuarioFormDialog({
         </Field>
       )}
 
-      {!papelFixo && (
+      {!papelFixo && !somenteAdmin && (
       <Controller
         control={control}
         name="admin"
@@ -235,7 +253,7 @@ export function UsuarioFormDialog({
       />
       )}
 
-      {(papelFixo || !admin) && (
+      {!somenteAdmin && (papelFixo || !admin) && (
         <div className="grid gap-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Empresas e acesso</span>

@@ -23,9 +23,8 @@ function Kpi({ titulo, valor, descricao }: { titulo: string; valor: string; desc
 export default async function ObraResumoPage({ params }: PageProps<"/obras/[obraId]">) {
   const { obraId } = await params;
   const ctx = await requireContext();
-  const obra = await obterObra(ctx, obraId);
+  const [obra, r] = await Promise.all([obterObra(ctx, obraId), resumoObra(ctx, obraId)]);
   if (!obra) notFound();
-  const r = await resumoObra(ctx, obra.id);
 
   const margem = r.receitaRealizadaCentavos - r.custoRealizadoCentavos;
 

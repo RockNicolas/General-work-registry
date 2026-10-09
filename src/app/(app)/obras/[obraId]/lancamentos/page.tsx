@@ -35,15 +35,14 @@ export default async function LancamentosPage({
   const { obraId } = await params;
   const bruto = await searchParams;
   const ctx = await requireContext();
-  const obra = await obterObra(ctx, obraId);
-  if (!obra) notFound();
-
   const filtros = filtrosLancamentoSchema.parse(Object.fromEntries(Object.entries(bruto).map(([k, v]) => [k, primeiro(v)])));
-  const [pagina, etapas, categorias] = await Promise.all([
-    listarLancamentos(ctx, obra.id, filtros),
-    listarEtapas(ctx, obra.id),
-    listarCategorias(ctx, obra.empresaId),
+  const [obra, pagina, etapas] = await Promise.all([
+    obterObra(ctx, obraId),
+    listarLancamentos(ctx, obraId, filtros),
+    listarEtapas(ctx, obraId),
   ]);
+  if (!obra) notFound();
+  const categorias = await listarCategorias(ctx, obra.empresaId);
 
   const base = `/obras/${obra.id}/lancamentos`;
   const opcoesEtapas = etapas.map((e) => ({ id: e.id, label: `${e.codigo} — ${e.nome}` }));

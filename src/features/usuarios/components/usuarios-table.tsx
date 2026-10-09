@@ -15,9 +15,10 @@ type Props = {
   obrasPorEmpresa: Record<string, ObraOpcao[]>;
   meuId: string;
   papelFixo?: PapelVinculo;
+  somenteAdmin?: boolean;
 };
 
-export function UsuariosTable({ data, empresas, obrasPorEmpresa, meuId, papelFixo }: Props) {
+export function UsuariosTable({ data, empresas, obrasPorEmpresa, meuId, papelFixo, somenteAdmin }: Props) {
   const columns: ColumnDef<UsuarioRow>[] = [
     { accessorKey: "nome", header: "Nome", cell: ({ row }) => <span className="font-medium">{row.original.nome}</span> },
     { accessorKey: "email", header: "E-mail" },
@@ -54,7 +55,14 @@ export function UsuariosTable({ data, empresas, obrasPorEmpresa, meuId, papelFix
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
-          <UsuarioFormDialog usuario={row.original} empresas={empresas} obrasPorEmpresa={obrasPorEmpresa} meuId={meuId} papelFixo={papelFixo} />
+          <UsuarioFormDialog
+            usuario={row.original}
+            empresas={empresas}
+            obrasPorEmpresa={obrasPorEmpresa}
+            meuId={meuId}
+            papelFixo={papelFixo}
+            somenteAdmin={somenteAdmin}
+          />
           <RedefinirSenhaDialog usuarioId={row.original.id} nome={row.original.nome} />
         </div>
       ),
@@ -66,7 +74,15 @@ export function UsuariosTable({ data, empresas, obrasPorEmpresa, meuId, papelFix
       columns={columns}
       data={data}
       searchPlaceholder="Buscar por nome ou e-mail..."
-      emptyMessage={papelFixo === "cliente" ? "Nenhum cliente cadastrado." : papelFixo === "empresa" ? "Nenhuma empresa com acesso ao painel." : "Nenhum usuário encontrado."}
+      emptyMessage={
+        somenteAdmin
+          ? "Nenhum administrador cadastrado."
+          : papelFixo === "cliente"
+            ? "Nenhum cliente cadastrado."
+            : papelFixo === "empresa"
+              ? "Nenhuma empresa com acesso ao painel."
+              : "Nenhum usuário encontrado."
+      }
     />
   );
 }
